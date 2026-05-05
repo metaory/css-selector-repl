@@ -124,6 +124,7 @@ const open = () => {
 };
 
 chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "debugger:ping") return;
   if (message?.type === "debugger:open") {
     open();
     return;

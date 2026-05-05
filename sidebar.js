@@ -50,6 +50,9 @@ const focusItem = (index) => {
   render(state.payload);
 };
 
+const getRowFromTarget = (target) =>
+  target instanceof Element ? target.closest("li[data-index]") : null;
+
 const fetchInitial = () => {
   if (!state.tabId) return;
   chrome.runtime.sendMessage({ type: "debugger:ensure-open", tabId: state.tabId });
@@ -62,9 +65,11 @@ chrome.runtime.onMessage.addListener((message) => {
 });
 
 listNode.addEventListener("click", (event) => {
-  const row = event.target.closest("li[data-index]");
+  const row = getRowFromTarget(event.target);
   if (!row) return;
-  focusItem(Number(row.dataset.index));
+  const index = Number(row.dataset.index);
+  if (!Number.isInteger(index)) return;
+  focusItem(index);
 });
 
 chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {

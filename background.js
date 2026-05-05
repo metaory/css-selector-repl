@@ -20,9 +20,9 @@ chrome.runtime.onStartup.addListener(enableActionSidebar);
 const getActiveTab = () =>
   chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => tab);
 
-const sendOpenMessage = (tabId) =>
+const sendTabMessage = (tabId, message) =>
   new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, { type: "debugger:open" }, () =>
+    chrome.tabs.sendMessage(tabId, message, () =>
       resolve(!chrome.runtime.lastError)
     );
   });
@@ -33,12 +33,15 @@ const injectContentScript = (tabId) =>
     files: ["content.js"]
   });
 
-const ensureDebuggerInput = (tabId) =>
+const ensureContentScript = (tabId) =>
   Number.isInteger(tabId)
-    ? sendOpenMessage(tabId).then((hasReceiver) =>
-        hasReceiver ? undefined : injectContentScript(tabId).then(() => sendOpenMessage(tabId))
+    ? sendTabMessage(tabId, { type: "debugger:ping" }).then((hasReceiver) =>
+        hasReceiver ? undefined : injectContentScript(tabId)
       )
     : Promise.resolve();
+
+const ensureDebuggerInput = (tabId) =>
+  ensureContentScript(tabId).then(() => sendTabMessage(tabId, { type: "debugger:open" }));
 
 const openDebugger = (tabId) =>
   tabId
@@ -88,7 +91,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message?.type === "selector:focus") {
     if (!Number.isInteger(message.tabId) || !Number.isInteger(message.index)) return;
-    ensureDebuggerInput(message.tabId).then(() =>
+    ensureContentScript(message.tabId).then(() =>
       chrome.tabs.sendMessage(message.tabId, { type: "selector:focus", index: message.index })
     );
     return;
