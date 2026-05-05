@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "selector-debugger",
+  "version": "0.1.0",
+  "description": "Minimal Chrome extension for real-time CSS selector debugging.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "commands": {
+    "reload-extension": {
+      "suggested_key": {
+        "default": "Alt+R"
+      },
+      "description": "Reload extension"
+    },
+    "toggle-debugger": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "Toggle selector debugger"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidebar.html"
+  },
+  "action": {
+    "default_title": "selector-debugger"
+  }
+}
+

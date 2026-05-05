@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>selector-debugger</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --sdbg-bg: #121212;
+        --sdbg-surface: #1f1f1f;
+        --sdbg-text: #f2f2f2;
+        --sdbg-muted: #bdbdbd;
+        --sdbg-error: #ff8a80;
+        --sdbg-match: #ff7a45;
+        --sdbg-active: #52d1ff;
+      }
+      body { margin: 0; background: var(--sdbg-bg); color: var(--sdbg-text); font: 13px/1.3 system-ui, sans-serif; }
+      #app { padding: 10px; }
+      #meta { margin: 0 0 10px; color: var(--sdbg-muted); word-break: break-word; }
+      #error { margin: 0 0 10px; color: var(--sdbg-error); display: none; }
+      #list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+      #list li { border: 2px dashed var(--sdbg-match); border-radius: 12px; padding: 8px; background: var(--sdbg-surface); cursor: pointer; }
+      #list li.is-active { border-color: var(--sdbg-active); }
+    </style>
+  </head>
+  <body>
+    <main id="app">
+      <p id="meta">No selector yet.</p>
+      <p id="error"></p>
+      <ul id="list"></ul>
+    </main>
+    <script src="sidebar.js"></script>
+  </body>
+</html>
