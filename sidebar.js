@@ -66,6 +66,9 @@ const getRowFromTarget = (target) =>
 
 const fetchInitial = () => {
   if (!state.tabId) return;
+  chrome.runtime.sendMessage({ type: "debugger:ensure-open", tabId: state.tabId }, () => {
+    void chrome.runtime.lastError;
+  });
   chrome.runtime.sendMessage({ type: "sidebar:init", tabId: state.tabId }, render);
 };
 
