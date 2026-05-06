@@ -28,6 +28,16 @@ if (!globalThis.__seldbg_booted) {
       void chrome.runtime.lastError;
     });
   };
+  const stopInputEventPropagation = (event) => event.stopPropagation();
+  const attachInputListeners = (input) => {
+    if (input.dataset.seldbgInputReady === "1") return input;
+    input.dataset.seldbgInputReady = "1";
+    input.addEventListener("keydown", stopInputEventPropagation);
+    input.addEventListener("keyup", stopInputEventPropagation);
+    input.addEventListener("keypress", stopInputEventPropagation);
+    input.addEventListener("input", (event) => evaluate(event.target.value));
+    return input;
+  };
 
   const clearHits = () => {
     for (const node of state.hits) node.classList.remove(HIT_CLASS, ACTIVE_CLASS);
@@ -125,7 +135,7 @@ if (!globalThis.__seldbg_booted) {
 .${ACTIVE_CLASS} { outline: 2px solid var(--sdbg-accent) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-accent), 0 0 0 3px var(--sdbg-accent), 0 0 12px 2px var(--sdbg-accent) !important; }
 #${ROOT_ID} { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); padding: 8px 10px; }
 #${ROOT_ID} .${ROW_CLASS} { display: flex; gap: 8px; align-items: center; direction: ltr; }
-#${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 14px/1.2 monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; }
+#${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 14px/1.2 monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; caret-color: var(--sdbg-accent); caret-shape: block; }
 #${ROOT_ID} .${COPY_BTN_CLASS} { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: var(--sdbg-soft); color: var(--sdbg-accent); cursor: pointer; padding: 0; transition: background-color 120ms ease, transform 120ms ease; }
 #${ROOT_ID} .${COPY_BTN_CLASS}:hover { background: var(--sdbg-soft-strong); transform: translateY(-1px); }
 #${ROOT_ID} .${COPY_BTN_CLASS}:focus-visible { outline: 2px solid var(--sdbg-accent); outline-offset: 1px; }
@@ -197,6 +207,7 @@ if (!globalThis.__seldbg_booted) {
         nextRow.append(makeCopyButton());
       }
       if (!existing.querySelector(`.${TOAST_CLASS}`)) existing.append(makeToast());
+      if (state.input) attachInputListeners(state.input);
       return state.input;
     }
     const root = document.createElement("div");
@@ -208,8 +219,7 @@ if (!globalThis.__seldbg_booted) {
     input.placeholder = "Type CSS selector...";
     input.autocomplete = "off";
     input.spellcheck = false;
-    input.addEventListener("input", (event) => evaluate(event.target.value));
-    row.append(input);
+    row.append(attachInputListeners(input));
     row.append(makeCopyButton());
     root.append(row);
     root.append(makeToast());
@@ -220,8 +230,13 @@ if (!globalThis.__seldbg_booted) {
 
   const open = () => {
     const input = mount();
-    input.focus();
-    input.select();
+    const focusInput = () => {
+      input.focus({ preventScroll: true });
+      const point = input.value.length;
+      input.setSelectionRange(point, point);
+    };
+    focusInput();
+    requestAnimationFrame(focusInput);
     evaluate(input.value);
   };
 
