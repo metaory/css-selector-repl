@@ -15,11 +15,20 @@ const state = {
   payload: defaultPayload
 };
 
+const fmtAttr = ([k, v]) =>
+  v ? `[${k}="${v.length > 40 ? `${v.slice(0, 40)}…` : v}"]` : `[${k}]`;
+
 const toLabel = (item) => {
-  const id = item.id ? `#${item.id}` : "";
-  const classes = (item.classes || []).length ? `.${item.classes.join(".")}` : "";
-  const text = item.text ? ` "${item.text}"` : "";
-  return `${item.tag}${id}${classes}${text}`;
+  const selector = [
+    item.tag,
+    item.id && `#${item.id}`,
+    item.classes?.length && `.${item.classes.join(".")}`,
+    item.attrs?.length && item.attrs.map(fmtAttr).join("")
+  ]
+    .filter(Boolean)
+    .join("");
+
+  return item.text ? `${selector} "${item.text}"` : selector;
 };
 
 const render = (payload) => {
@@ -67,6 +76,20 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "selector:update" || message.tabId !== state.tabId) return;
   render(message.payload);
 });
+
+const closeDebugger = () => {
+  if (!state.tabId) return;
+  chrome.runtime.sendMessage({ type: "debugger:close", tabId: state.tabId }, () => {
+    void chrome.runtime.lastError;
+  });
+};
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) return;
+  closeDebugger();
+});
+
+window.addEventListener("pagehide", closeDebugger);
 
 listNode.addEventListener("click", (event) => {
   const row = getRowFromTarget(event.target);

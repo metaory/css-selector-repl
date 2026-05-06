@@ -6,11 +6,11 @@
     <title>selector-debugger</title>
     <style>
       :root {
-        color-scheme: dark;
-        --sdbg-bg: #121212;
-        --sdbg-surface: #1f1f1f;
-        --sdbg-text: #f2f2f2;
-        --sdbg-muted: #bdbdbd;
+        color-scheme: light dark;
+        --sdbg-bg: #220044;
+        --sdbg-surface: rgba(255, 255, 255, 0.08);
+        --sdbg-text: rgba(255, 255, 255, 0.92);
+        --sdbg-muted: rgba(255, 255, 255, 0.7);
         --sdbg-error: #ff8a80;
         --sdbg-match: #ff7a45;
         --sdbg-active: #52d1ff;
@@ -20,7 +20,7 @@
       #meta { margin: 0 0 10px; color: var(--sdbg-muted); word-break: break-word; }
       #error { margin: 0 0 10px; color: var(--sdbg-error); display: none; }
       #list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-      #list li { border: 2px dashed var(--sdbg-match); border-radius: 12px; padding: 8px; background: var(--sdbg-surface); cursor: pointer; }
+      #list li { border: 2px dashed var(--sdbg-match); border-radius: 12px; padding: 8px; background: var(--sdbg-surface); color: var(--sdbg-text); cursor: pointer; font-family: ui-monospace, monospace; word-break: break-word; }
       #list li.is-active { border-color: var(--sdbg-active); }
     </style>
   </head>

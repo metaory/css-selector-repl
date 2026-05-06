@@ -9,11 +9,16 @@ if (!globalThis.__seldbg_booted) {
   const STYLE_ID = "__seldbg_style__";
   const HIT_CLASS = "__seldbg_hit__";
   const ACTIVE_CLASS = "__seldbg_active__";
+  const ROW_CLASS = "__seldbg_row__";
+  const COPY_BTN_CLASS = "__seldbg_copy_btn__";
+  const TOAST_CLASS = "__seldbg_toast__";
+  const TOAST_SHOW_CLASS = "__seldbg_toast_show__";
   const MAX_MATCHES = 150;
 
   const state = {
     input: null,
-    hits: []
+    hits: [],
+    toastTimer: 0
   };
 
   const emptyPayload = { selector: "", count: 0, matches: [], error: "" };
@@ -34,7 +39,10 @@ if (!globalThis.__seldbg_booted) {
   const toItem = (node) => ({
     tag: node.tagName.toLowerCase(),
     id: node.id || "",
-    classes: [...node.classList].filter((name) => name !== HIT_CLASS).slice(0, 4),
+    classes: [...node.classList].filter((name) => name !== HIT_CLASS && name !== ACTIVE_CLASS),
+    attrs: [...node.attributes]
+      .filter(({ name }) => name !== "id" && name !== "class")
+      .map(({ name, value }) => [name, value]),
     text: compactText(node.innerText || node.textContent || "")
   });
 
@@ -81,6 +89,15 @@ if (!globalThis.__seldbg_booted) {
     sendUpdate(emptyPayload);
   };
 
+  const close = () => {
+    reset();
+    if (state.toastTimer) clearTimeout(state.toastTimer);
+    document.getElementById(ROOT_ID)?.remove();
+    document.getElementById(STYLE_ID)?.remove();
+    state.input = null;
+    state.toastTimer = 0;
+  };
+
   const focusByIndex = (index) => {
     if (!Number.isInteger(index)) return;
     const node = state.hits[index];
@@ -96,19 +113,71 @@ if (!globalThis.__seldbg_booted) {
     style.id = STYLE_ID;
     style.textContent = `
 :root {
-  --sdbg-bg: #111;
-  --sdbg-surface: #1d1d1d;
-  --sdbg-text: #f7f7f7;
-  --sdbg-match: #ff7a45;
-  --sdbg-match-bg: rgba(255, 122, 69, 0.12);
-  --sdbg-active: #52d1ff;
+  --sdbg-bg: #220044;
+  --sdbg-fg: rgba(255, 255, 255, 0.92);
+  --sdbg-accent: #52d1ff;
+  --sdbg-soft: rgba(255, 255, 255, 0.08);
+  --sdbg-soft-strong: rgba(255, 255, 255, 0.16);
+  --sdbg-highlight: #ff7a45;
+  --sdbg-highlight-soft: rgba(255, 122, 69, 0.12);
 }
-.${HIT_CLASS} { outline: 2px dashed var(--sdbg-match) !important; background: var(--sdbg-match-bg) !important; }
-.${ACTIVE_CLASS} { outline: 2px dashed var(--sdbg-active) !important; }
-#${ROOT_ID} { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); border-top: 2px solid var(--sdbg-match); padding: 8px 10px; }
-#${ROOT_ID} input { width: 100%; box-sizing: border-box; border: 0; border-radius: 10px; padding: 10px 12px; font: 14px/1.2 monospace; background: var(--sdbg-surface); color: var(--sdbg-text); }
+.${HIT_CLASS} { outline: 2px dashed var(--sdbg-highlight) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-highlight) !important; background-color: var(--sdbg-highlight-soft) !important; }
+.${ACTIVE_CLASS} { outline: 2px solid var(--sdbg-accent) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-accent), 0 0 0 3px var(--sdbg-accent), 0 0 12px 2px var(--sdbg-accent) !important; }
+#${ROOT_ID} { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); padding: 8px 10px; }
+#${ROOT_ID} .${ROW_CLASS} { display: flex; gap: 8px; align-items: center; direction: ltr; }
+#${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 14px/1.2 monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; }
+#${ROOT_ID} .${COPY_BTN_CLASS} { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: var(--sdbg-soft); color: var(--sdbg-accent); cursor: pointer; padding: 0; transition: background-color 120ms ease, transform 120ms ease; }
+#${ROOT_ID} .${COPY_BTN_CLASS}:hover { background: var(--sdbg-soft-strong); transform: translateY(-1px); }
+#${ROOT_ID} .${COPY_BTN_CLASS}:focus-visible { outline: 2px solid var(--sdbg-accent); outline-offset: 1px; }
+#${ROOT_ID} .${COPY_BTN_CLASS} img { width: 20px; height: 20px; display: block; pointer-events: none; }
+#${ROOT_ID} .${TOAST_CLASS} { position: absolute; right: 10px; bottom: calc(100% + 8px); max-width: min(60vw, 320px); background: var(--sdbg-soft-strong); color: var(--sdbg-fg); border-radius: 8px; padding: 6px 10px; font: 12px/1.2 system-ui, sans-serif; opacity: 0; transform: translateY(6px); transition: opacity 120ms ease, transform 120ms ease; pointer-events: none; }
+#${ROOT_ID} .${TOAST_CLASS}.${TOAST_SHOW_CLASS} { opacity: 1; transform: translateY(0); }
 `;
     document.documentElement.append(style);
+  };
+
+  const showToast = (message) => {
+    const toast = document.querySelector(`#${ROOT_ID} .${TOAST_CLASS}`);
+    if (!(toast instanceof HTMLElement)) return;
+    toast.textContent = message;
+    toast.classList.add(TOAST_SHOW_CLASS);
+    if (state.toastTimer) clearTimeout(state.toastTimer);
+    state.toastTimer = setTimeout(() => {
+      toast.classList.remove(TOAST_SHOW_CLASS);
+      state.toastTimer = 0;
+    }, 1200);
+  };
+
+  const copySelector = () => {
+    const selector = state.input?.value?.trim() || "";
+    if (!selector) {
+      showToast("Nothing to copy");
+      return;
+    }
+    navigator.clipboard
+      .writeText(selector)
+      .then(() => showToast("Selector copied"))
+      .catch(() => showToast("Copy failed"));
+  };
+
+  const makeCopyButton = () => {
+    const button = document.createElement("button");
+    const icon = document.createElement("img");
+    button.type = "button";
+    button.className = COPY_BTN_CLASS;
+    button.ariaLabel = "Copy selector";
+    icon.src = chrome.runtime.getURL("assets/copy.svg");
+    icon.alt = "";
+    button.append(icon);
+    button.addEventListener("click", copySelector);
+    return button;
+  };
+
+  const makeToast = () => {
+    const toast = document.createElement("div");
+    toast.className = TOAST_CLASS;
+    toast.textContent = "Selector copied";
+    return toast;
   };
 
   const mount = () => {
@@ -117,17 +186,33 @@ if (!globalThis.__seldbg_booted) {
     const existing = document.getElementById(ROOT_ID);
     if (existing) {
       state.input = existing.querySelector("input");
+      const row = existing.querySelector(`.${ROW_CLASS}`);
+      const hasButton = existing.querySelector(`.${COPY_BTN_CLASS}`);
+      if (row && !hasButton) row.append(makeCopyButton());
+      if (!row && state.input) {
+        const nextRow = document.createElement("div");
+        nextRow.className = ROW_CLASS;
+        state.input.replaceWith(nextRow);
+        nextRow.append(state.input);
+        nextRow.append(makeCopyButton());
+      }
+      if (!existing.querySelector(`.${TOAST_CLASS}`)) existing.append(makeToast());
       return state.input;
     }
     const root = document.createElement("div");
+    const row = document.createElement("div");
     root.id = ROOT_ID;
+    row.className = ROW_CLASS;
     const input = document.createElement("input");
     input.type = "text";
     input.placeholder = "Type CSS selector...";
     input.autocomplete = "off";
     input.spellcheck = false;
     input.addEventListener("input", (event) => evaluate(event.target.value));
-    root.append(input);
+    row.append(input);
+    row.append(makeCopyButton());
+    root.append(row);
+    root.append(makeToast());
     document.documentElement.append(root);
     state.input = input;
     return input;
@@ -148,6 +233,10 @@ if (!globalThis.__seldbg_booted) {
     }
     if (message?.type === "debugger:reset") {
       reset();
+      return;
+    }
+    if (message?.type === "debugger:close") {
+      close();
       return;
     }
     if (message?.type !== "selector:focus") return;

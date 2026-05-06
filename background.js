@@ -138,6 +138,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     ensureDebuggerInput(message.tabId);
     return;
   }
+  if (message?.type === "debugger:close") {
+    if (!message.tabId) return;
+    ensureContentScript(message.tabId).then(() =>
+      sendTabMessage(message.tabId, { type: "debugger:close" })
+    );
+    setTabPayload(message.tabId, { ...emptyPayload, tabId: message.tabId });
+    return;
+  }
   if (message?.type === "selector:focus") {
     if (!isTabId(message.tabId) || !Number.isInteger(message.index)) return;
     ensureContentScript(message.tabId).then(() =>
