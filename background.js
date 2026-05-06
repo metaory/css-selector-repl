@@ -11,8 +11,9 @@ const emptyPayload = {
   matches: [],
   error: ""
 };
+const defaultTabState = { active: false, payload: emptyPayload };
 const enableActionSidebar = () =>
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => undefined);
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => undefined);
 
 enableActionSidebar();
 chrome.runtime.onStartup.addListener(enableActionSidebar);
@@ -74,25 +75,69 @@ const ensureDebuggerInput = (tabId) =>
     ? ensureContentScript(tabId).then(() => sendTabMessage(tabId, { type: "debugger:open" }))
     : Promise.resolve(false);
 
-const setTabPayload = (tabId, payload) => {
-  tabState.set(tabId, payload);
-  chrome.runtime.sendMessage({ type: "selector:update", payload, tabId }, () => {
-    void chrome.runtime.lastError;
-  });
-  return payload;
+const getTabState = (tabId) => tabState.get(tabId) || defaultTabState;
+
+const setTabState = (tabId, next) => {
+  if (!isTabId(tabId)) return defaultTabState;
+  const current = getTabState(tabId);
+  const value = { ...current, ...next };
+  tabState.set(tabId, value);
+  return value;
 };
 
-const openDebugger = (tabId) =>
-  tabId
+const setTabPayload = (tabId, payload) => {
+  const normalizedPayload = { ...emptyPayload, ...(payload || {}) };
+  setTabState(tabId, { payload: normalizedPayload });
+  chrome.runtime.sendMessage({ type: "selector:update", payload: normalizedPayload, tabId }, () => {
+    void chrome.runtime.lastError;
+  });
+  return normalizedPayload;
+};
+
+const setTabActive = (tabId, active) => {
+  setTabState(tabId, { active });
+  return active;
+};
+
+const isTabActive = (tabId) => getTabState(tabId).active === true;
+
+const closeSidePanel = (tabId) => {
+  if (!isTabId(tabId)) return Promise.resolve();
+  if (typeof chrome.sidePanel?.close === "function") {
+    return chrome.sidePanel.close({ tabId }).catch(() => undefined);
+  }
+  return chrome.sidePanel.setOptions({ tabId, enabled: false }).catch(() => undefined);
+};
+
+const openSidePanel = (tabId) =>
+  isTabId(tabId)
     ? chrome.sidePanel
         .setOptions({ tabId, path: "sidebar.html", enabled: true })
         .then(() => chrome.sidePanel.open({ tabId }))
-        .then(() => ensureDebuggerInput(tabId))
         .catch(() => undefined)
     : Promise.resolve();
 
+const activateDebugger = (tabId) => {
+  if (!isTabId(tabId)) return Promise.resolve();
+  setTabActive(tabId, true);
+  return openSidePanel(tabId).then(() => ensureDebuggerInput(tabId)).catch(() => undefined);
+};
+
+const deactivateDebugger = (tabId) => {
+  if (!isTabId(tabId)) return Promise.resolve();
+  setTabActive(tabId, false);
+  setTabPayload(tabId, { ...emptyPayload, tabId });
+  return Promise.all([
+    closeSidePanel(tabId),
+    ensureContentScript(tabId).then(() => sendTabMessage(tabId, { type: "debugger:close" }))
+  ]).catch(() => undefined);
+};
+
+const toggleDebugger = (tabId) =>
+  isTabActive(tabId) ? deactivateDebugger(tabId) : activateDebugger(tabId);
+
 chrome.action.onClicked.addListener((tab) => {
-  openDebugger(tab?.id);
+  toggleDebugger(tab?.id);
 });
 
 chrome.commands.onCommand.addListener((command) => {
@@ -101,7 +146,7 @@ chrome.commands.onCommand.addListener((command) => {
     return;
   }
   if (command !== "toggle-debugger") return;
-  getActiveTab().then((tab) => openDebugger(tab?.id));
+  getActiveTab().then((tab) => toggleDebugger(tab?.id));
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -110,18 +155,14 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!isTabId(tabId)) return;
-  const shouldReset = changeInfo?.status === "loading" || typeof changeInfo?.url === "string";
-  if (!shouldReset) return;
-  setTabPayload(tabId, { ...emptyPayload, tabId });
-  onInjectableTab(tabId, changeInfo?.url, () =>
-    ensureContentScript(tabId)
-      .then(() => sendTabMessage(tabId, { type: "debugger:reset" }))
-      .catch(() => undefined)
-  );
+  if (changeInfo?.status !== "loading") return;
+  if (!isTabActive(tabId)) return;
+  deactivateDebugger(tabId);
 });
 
 if (chrome.sidePanel?.onOpened) {
   chrome.sidePanel.onOpened.addListener((panel) => {
+    if (!isTabActive(panel?.tabId)) return;
     ensureDebuggerInput(panel?.tabId);
   });
 }
@@ -130,20 +171,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "selector:update") {
     const tabId = sender?.tab?.id;
     if (!tabId) return;
-    setTabPayload(tabId, { ...message.payload, tabId });
+    setTabPayload(tabId, { ...emptyPayload, ...message.payload, tabId });
     return;
   }
   if (message?.type === "debugger:ensure-open") {
-    if (!message.tabId) return;
+    if (!isTabId(message.tabId)) return;
+    if (!isTabActive(message.tabId)) return;
     ensureDebuggerInput(message.tabId);
     return;
   }
   if (message?.type === "debugger:close") {
-    if (!message.tabId) return;
-    ensureContentScript(message.tabId).then(() =>
-      sendTabMessage(message.tabId, { type: "debugger:close" })
-    );
-    setTabPayload(message.tabId, { ...emptyPayload, tabId: message.tabId });
+    deactivateDebugger(message.tabId);
     return;
   }
   if (message?.type === "selector:focus") {
@@ -154,6 +192,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
   if (message?.type !== "sidebar:init") return;
-  sendResponse(tabState.get(message.tabId) || emptyPayload);
+  sendResponse(getTabState(message.tabId).payload || emptyPayload);
 });
 

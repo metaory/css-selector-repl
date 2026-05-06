@@ -66,9 +66,6 @@ const getRowFromTarget = (target) =>
 
 const fetchInitial = () => {
   if (!state.tabId) return;
-  chrome.runtime.sendMessage({ type: "debugger:ensure-open", tabId: state.tabId }, () => {
-    void chrome.runtime.lastError;
-  });
   chrome.runtime.sendMessage({ type: "sidebar:init", tabId: state.tabId }, render);
 };
 
@@ -76,20 +73,6 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== "selector:update" || message.tabId !== state.tabId) return;
   render(message.payload);
 });
-
-const closeDebugger = () => {
-  if (!state.tabId) return;
-  chrome.runtime.sendMessage({ type: "debugger:close", tabId: state.tabId }, () => {
-    void chrome.runtime.lastError;
-  });
-};
-
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) return;
-  closeDebugger();
-});
-
-window.addEventListener("pagehide", closeDebugger);
 
 listNode.addEventListener("click", (event) => {
   const row = getRowFromTarget(event.target);
