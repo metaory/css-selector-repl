@@ -46,7 +46,9 @@ const render = (payload) => {
 const focusItem = (index) => {
   if (!Number.isInteger(index) || !state.tabId) return;
   state.selectedIndex = index;
-  chrome.runtime.sendMessage({ type: "selector:focus", tabId: state.tabId, index });
+  chrome.runtime.sendMessage({ type: "selector:focus", tabId: state.tabId, index }, () => {
+    void chrome.runtime.lastError;
+  });
   render(state.payload);
 };
 
@@ -55,7 +57,9 @@ const getRowFromTarget = (target) =>
 
 const fetchInitial = () => {
   if (!state.tabId) return;
-  chrome.runtime.sendMessage({ type: "debugger:ensure-open", tabId: state.tabId });
+  chrome.runtime.sendMessage({ type: "debugger:ensure-open", tabId: state.tabId }, () => {
+    void chrome.runtime.lastError;
+  });
   chrome.runtime.sendMessage({ type: "sidebar:init", tabId: state.tabId }, render);
 };
 
