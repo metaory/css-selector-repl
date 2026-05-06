@@ -22,20 +22,22 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const emptyPayload = { selector: "", count: 0, matches: [], error: "" };
+  const inputStopEvents = ["keydown", "keyup", "keypress"];
 
   const sendUpdate = (payload) => {
     chrome.runtime.sendMessage({ type: "selector:update", payload }, () => {
       void chrome.runtime.lastError;
     });
   };
+  const evaluateFromInputEvent = (event) => evaluate(event.target.value);
   const stopInputEventPropagation = (event) => event.stopPropagation();
   const attachInputListeners = (input) => {
     if (input.dataset.seldbgInputReady === "1") return input;
     input.dataset.seldbgInputReady = "1";
-    input.addEventListener("keydown", stopInputEventPropagation);
-    input.addEventListener("keyup", stopInputEventPropagation);
-    input.addEventListener("keypress", stopInputEventPropagation);
-    input.addEventListener("input", (event) => evaluate(event.target.value));
+    for (const eventName of inputStopEvents) {
+      input.addEventListener(eventName, stopInputEventPropagation);
+    }
+    input.addEventListener("input", evaluateFromInputEvent);
     return input;
   };
 
@@ -133,7 +135,7 @@ if (!globalThis.__seldbg_booted) {
 }
 .${HIT_CLASS} { outline: 2px dashed var(--sdbg-highlight) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-highlight) !important; background-color: var(--sdbg-highlight-soft) !important; }
 .${ACTIVE_CLASS} { outline: 2px solid var(--sdbg-accent) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-accent), 0 0 0 3px var(--sdbg-accent), 0 0 12px 2px var(--sdbg-accent) !important; }
-#${ROOT_ID} { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); padding: 8px 10px; }
+#${ROOT_ID} { position: sticky; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); padding: 8px 10px; }
 #${ROOT_ID} .${ROW_CLASS} { display: flex; gap: 8px; align-items: center; direction: ltr; }
 #${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 14px/1.2 monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; caret-color: var(--sdbg-accent); caret-shape: block; }
 #${ROOT_ID} .${COPY_BTN_CLASS} { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: var(--sdbg-soft); color: var(--sdbg-accent); cursor: pointer; padding: 0; transition: background-color 120ms ease, transform 120ms ease; }
@@ -223,7 +225,7 @@ if (!globalThis.__seldbg_booted) {
     row.append(makeCopyButton());
     root.append(row);
     root.append(makeToast());
-    document.documentElement.append(root);
+    (document.body || document.documentElement).append(root);
     state.input = input;
     return input;
   };
@@ -240,22 +242,18 @@ if (!globalThis.__seldbg_booted) {
     evaluate(input.value);
   };
 
+  const messageHandlers = {
+    "debugger:open": () => open(),
+    "debugger:reset": () => reset(),
+    "debugger:close": () => close(),
+    "selector:focus": (message) => focusByIndex(message.index)
+  };
+
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === "debugger:ping") return;
-    if (message?.type === "debugger:open") {
-      open();
-      return;
-    }
-    if (message?.type === "debugger:reset") {
-      reset();
-      return;
-    }
-    if (message?.type === "debugger:close") {
-      close();
-      return;
-    }
-    if (message?.type !== "selector:focus") return;
-    focusByIndex(message.index);
+    const handler = messageHandlers[message?.type];
+    if (!handler) return;
+    handler(message);
   });
 }
 

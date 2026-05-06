@@ -149,13 +149,15 @@ chrome.action.onClicked.addListener((tab) => {
   toggleDebugger(tab?.id);
 });
 
+const commandHandlers = {
+  "reload-extension": () => chrome.runtime.reload(),
+  "toggle-debugger": () => getActiveTab().then((tab) => toggleDebugger(tab?.id))
+};
+
 chrome.commands.onCommand.addListener((command) => {
-  if (command === "reload-extension") {
-    chrome.runtime.reload();
-    return;
-  }
-  if (command !== "toggle-debugger") return;
-  getActiveTab().then((tab) => toggleDebugger(tab?.id));
+  const handler = commandHandlers[command];
+  if (!handler) return;
+  handler();
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -177,31 +179,34 @@ if (chrome.sidePanel?.onOpened) {
   });
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === "selector:update") {
+const messageHandlers = {
+  "selector:update": (message, sender) => {
     const tabId = sender?.tab?.id;
-    if (!tabId) return;
+    if (!isTabId(tabId)) return;
     setTabPayload(tabId, { ...emptyPayload, ...message.payload, tabId });
-    return;
-  }
-  if (message?.type === "debugger:ensure-open") {
+  },
+  "debugger:ensure-open": (message) => {
     if (!isTabId(message.tabId)) return;
     setTabActive(message.tabId, true);
     ensureDebuggerInput(message.tabId);
-    return;
-  }
-  if (message?.type === "debugger:close") {
+  },
+  "debugger:close": (message) => {
     deactivateDebugger(message.tabId);
-    return;
-  }
-  if (message?.type === "selector:focus") {
+  },
+  "selector:focus": (message) => {
     if (!isTabId(message.tabId) || !Number.isInteger(message.index)) return;
     ensureContentScript(message.tabId).then(() =>
       sendTabMessage(message.tabId, { type: "selector:focus", index: message.index })
     );
-    return;
+  },
+  "sidebar:init": (message, _sender, sendResponse) => {
+    sendResponse(getTabState(message.tabId).payload || emptyPayload);
   }
-  if (message?.type !== "sidebar:init") return;
-  sendResponse(getTabState(message.tabId).payload || emptyPayload);
+};
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handler = messageHandlers[message?.type];
+  if (!handler) return;
+  handler(message, sender, sendResponse);
 });
 
