@@ -9,7 +9,6 @@ if (!globalThis.__seldbg_booted) {
   const BACKDROP_ID = "__seldbg_backdrop__";
   const BACKDROP_HOLES_ROLE = "__seldbg_backdrop_holes__";
   const BACKDROP_BOXES_ROLE = "__seldbg_backdrop_boxes__";
-  const STYLE_ID = "__seldbg_style__";
   const ROW_CLASS = "__seldbg_row__";
   const COPY_BTN_CLASS = "__seldbg_copy_btn__";
   const TOAST_CLASS = "__seldbg_toast__";
@@ -173,7 +172,6 @@ if (!globalThis.__seldbg_booted) {
   const isDebuggerNode = (node) =>
     node.id === ROOT_ID ||
     node.id === BACKDROP_ID ||
-    node.id === STYLE_ID ||
     node.closest?.(`#${ROOT_ID}`);
 
   const selectNodes = (selector) => {
@@ -223,7 +221,6 @@ if (!globalThis.__seldbg_booted) {
     if (state.toastTimer) clearTimeout(state.toastTimer);
     $id(ROOT_ID)?.remove();
     destroyOverlay();
-    $id(STYLE_ID)?.remove();
     state.input = null;
     state.toastTimer = 0;
   };
@@ -294,68 +291,6 @@ if (!globalThis.__seldbg_booted) {
     boxes.replaceChildren(...boxRects);
   };
 
-  const ensureStyle = () => {
-    if ($id(STYLE_ID)) return;
-    const martianMono400 = chrome.runtime.getURL(
-      "assets/fonts/martian-mono-latin-400-normal.woff2"
-    );
-    const martianMono500 = chrome.runtime.getURL(
-      "assets/fonts/martian-mono-latin-500-normal.woff2"
-    );
-    const martianMono700 = chrome.runtime.getURL(
-      "assets/fonts/martian-mono-latin-700-normal.woff2"
-    );
-    const style = el("style");
-    style.id = STYLE_ID;
-    style.textContent = `
-@font-face {
-  font-family: "Martian Mono";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("${martianMono400}") format("woff2");
-}
-@font-face {
-  font-family: "Martian Mono";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("${martianMono500}") format("woff2");
-}
-@font-face {
-  font-family: "Martian Mono";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("${martianMono700}") format("woff2");
-}
-:root {
-  --sdbg-bg: #220044;
-  --sdbg-fg: rgba(255, 255, 255, 0.92);
-  --sdbg-accent: #52d1ff;
-  --sdbg-soft: rgba(255, 255, 255, 0.08);
-  --sdbg-soft-strong: rgba(255, 255, 255, 0.16);
-  --sdbg-highlight: #ff7a45;
-  --sdbg-highlight-soft: rgba(255, 122, 69, 0.2);
-  --sdbg-backdrop: rgba(8, 3, 24, 0.58);
-}
-#${BACKDROP_ID} { position: fixed; inset: 0; z-index: 2147483644; pointer-events: none; }
-#${BACKDROP_ID}[hidden] { display: none; }
-#${BACKDROP_ID} svg { width: 100%; height: 100%; display: block; }
-#${BACKDROP_ID} [data-role="${BACKDROP_BOXES_ROLE}"] rect { vector-effect: non-scaling-stroke; }
-#${ROOT_ID} { position: sticky; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); padding: 8px 10px; }
-#${ROOT_ID} .${ROW_CLASS} { display: flex; gap: 8px; align-items: center; direction: ltr; }
-#${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 400 14px/1.2 "Martian Mono", ui-monospace, monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; caret-color: var(--sdbg-accent); caret-shape: block; }
-#${ROOT_ID} .${COPY_BTN_CLASS} { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: var(--sdbg-soft); color: var(--sdbg-accent); cursor: pointer; padding: 0; transition: background-color 120ms ease, transform 120ms ease; }
-#${ROOT_ID} .${COPY_BTN_CLASS}:hover { background: var(--sdbg-soft-strong); transform: translateY(-1px); }
-#${ROOT_ID} .${COPY_BTN_CLASS}:focus-visible { outline: 2px solid var(--sdbg-accent); outline-offset: 1px; }
-#${ROOT_ID} .${COPY_BTN_CLASS} img { width: 20px; height: 20px; display: block; pointer-events: none; }
-#${ROOT_ID} .${TOAST_CLASS} { position: absolute; right: 10px; bottom: calc(100% + 8px); max-width: min(60vw, 320px); background: var(--sdbg-soft-strong); color: var(--sdbg-fg); border-radius: 8px; padding: 6px 10px; font: 12px/1.2 system-ui, sans-serif; opacity: 0; transform: translateY(6px); transition: opacity 120ms ease, transform 120ms ease; pointer-events: none; }
-#${ROOT_ID} .${TOAST_CLASS}.${TOAST_SHOW_CLASS} { opacity: 1; transform: translateY(0); }
-`;
-    document.documentElement.append(style);
-  };
-
   const showToast = (message) => {
     const toast = $(`#${ROOT_ID} .${TOAST_CLASS}`);
     if (!(toast instanceof HTMLElement)) return;
@@ -401,7 +336,6 @@ if (!globalThis.__seldbg_booted) {
 
   const mount = () => {
     if (state.input) return state.input;
-    ensureStyle();
     ensureBackdropTracking();
     if (!$id(BACKDROP_ID)) {
       const backdrop = el("div");

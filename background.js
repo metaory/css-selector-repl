@@ -13,7 +13,7 @@ const emptyPayload = {
 };
 const defaultTabState = { active: false, payload: emptyPayload };
 const enableActionSidebar = () =>
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => undefined);
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => undefined);
 
 enableActionSidebar();
 chrome.runtime.onStartup.addListener(enableActionSidebar);
@@ -121,10 +121,7 @@ const closeSidePanel = (tabId) => {
 
 const openSidePanel = (tabId) =>
   isTabId(tabId)
-    ? chrome.sidePanel
-        .setOptions({ tabId, path: "sidebar.html", enabled: true })
-        .then(() => chrome.sidePanel.open({ tabId }))
-        .catch(() => undefined)
+    ? chrome.sidePanel.open({ tabId }).catch(() => undefined)
     : Promise.resolve();
 
 const activateDebugger = (tabId) => {

@@ -1,0 +1,152 @@
+@font-face {
+  font-family: "Baloo 2";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/fonts/baloo-2-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Baloo 2";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/fonts/baloo-2-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Baloo 2";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("assets/fonts/baloo-2-latin-800-normal.woff2") format("woff2");
+}
+
+:root {
+  --sdbg-bg: #220044;
+  --sdbg-fg: rgba(255, 255, 255, 0.92);
+  --sdbg-accent: #52d1ff;
+  --sdbg-main: rgba(220, 60, 110, 0.6);
+  --sdbg-soft: rgba(255, 255, 255, 0.08);
+  --sdbg-soft-strong: rgba(255, 255, 255, 0.16);
+  --sdbg-highlight: #ff7a45;
+  --sdbg-highlight-soft: rgba(255, 122, 69, 0.2);
+  --sdbg-backdrop: rgba(8, 3, 24, 0.58);
+}
+
+#__seldbg_backdrop__ {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483644;
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+
+  & svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  & [data-role="__seldbg_backdrop_boxes__"] rect {
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+#__seldbg_root__ {
+  position: sticky;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483647;
+  padding: 12px 18px;
+
+  & .__seldbg_row__ {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    direction: ltr;
+    border-radius: 14px;
+    box-shadow: rgb(255, 255, 255) 0px 0px 40px, rgba(255, 0, 120, 0.5) 0px 0px 60px;
+    backdrop-filter: brightness(.9) blur(32px);
+    background: rgb(220 190 200 / 70%);
+    outline: solid 5px white;
+  }
+
+  & input {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 0;
+    outline: 0;
+    border-radius: 10px;
+    padding: 16px 16px 10px;
+    font: 800 24px / 1 "Baloo 2", system-ui, sans-serif;
+    background: transparent;
+    color: var(--sdbg-bg);
+    direction: ltr;
+    text-align: left;
+    caret-color: var(--sdbg-main);
+    caret-shape: block;
+
+    &::placeholder {
+      color: var(--sdbg-bg);
+      opacity: 0.6;
+      padding-left: 20px;
+    }
+  }
+
+  & .__seldbg_copy_btn__ {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 10px;
+    background: var(--sdbg-soft);
+    color: var(--sdbg-accent);
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 120ms ease, transform 120ms ease;
+
+    &:hover {
+      background: var(--sdbg-soft-strong);
+      transform: translateY(-1px);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--sdbg-accent);
+      outline-offset: 1px;
+    }
+
+    & img {
+      width: 20px;
+      height: 20px;
+      display: block;
+      pointer-events: none;
+    }
+  }
+
+  & .__seldbg_toast__ {
+    position: absolute;
+    right: 10px;
+    bottom: calc(100% + 8px);
+    max-width: min(60vw, 320px);
+    background: var(--sdbg-soft-strong);
+    color: var(--sdbg-fg);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font: 12px/1.2 system-ui, sans-serif;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 120ms ease, transform 120ms ease;
+    pointer-events: none;
+
+    &.__seldbg_toast_show__ {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
