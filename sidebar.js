@@ -1,6 +1,11 @@
-const metaNode = document.getElementById("meta");
-const errorNode = document.getElementById("error");
-const listNode = document.getElementById("list");
+const $id = document.getElementById.bind(document);
+const el = (tag) => document.createElement(tag);
+const sendRuntime = (message, callback) =>
+  chrome.runtime.sendMessage(message, callback || (() => void chrome.runtime.lastError));
+
+const metaNode = $id("meta");
+const errorNode = $id("error");
+const listNode = $id("list");
 
 const defaultPayload = {
   selector: "",
@@ -41,23 +46,26 @@ const render = (payload) => {
   errorNode.textContent = error;
   errorNode.style.display = error ? "block" : "none";
   listNode.textContent = "";
-  const rows = matches.reduce((fragment, item, index) => {
-    const row = document.createElement("li");
+  const toRow = (item, index) => {
+    const row = Object.assign(el("li"), { textContent: toLabel(item) });
     row.dataset.index = `${index}`;
     if (index === state.selectedIndex) row.classList.add("is-active");
-    row.textContent = toLabel(item);
-    fragment.append(row);
-    return fragment;
-  }, document.createDocumentFragment());
+    return row;
+  };
+  const rows = matches.reduce(
+    (fragment, item, index) => {
+      fragment.append(toRow(item, index));
+      return fragment;
+    },
+    document.createDocumentFragment()
+  );
   listNode.append(rows);
 };
 
 const focusItem = (index) => {
   if (!Number.isInteger(index) || !state.tabId) return;
   state.selectedIndex = index;
-  chrome.runtime.sendMessage({ type: "selector:focus", tabId: state.tabId, index }, () => {
-    void chrome.runtime.lastError;
-  });
+  sendRuntime({ type: "selector:focus", tabId: state.tabId, index });
   render(state.payload);
 };
 
@@ -66,10 +74,8 @@ const getRowFromTarget = (target) =>
 
 const fetchInitial = () => {
   if (!state.tabId) return;
-  chrome.runtime.sendMessage({ type: "debugger:ensure-open", tabId: state.tabId }, () => {
-    void chrome.runtime.lastError;
-  });
-  chrome.runtime.sendMessage({ type: "sidebar:init", tabId: state.tabId }, render);
+  sendRuntime({ type: "debugger:ensure-open", tabId: state.tabId });
+  sendRuntime({ type: "sidebar:init", tabId: state.tabId }, render);
 };
 
 chrome.runtime.onMessage.addListener((message) => {

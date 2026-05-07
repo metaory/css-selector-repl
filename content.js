@@ -8,25 +8,115 @@ if (!globalThis.__seldbg_booted) {
   const ROOT_ID = "__seldbg_root__";
   const BACKDROP_ID = "__seldbg_backdrop__";
   const BACKDROP_HOLES_ROLE = "__seldbg_backdrop_holes__";
+  const BACKDROP_BOXES_ROLE = "__seldbg_backdrop_boxes__";
   const STYLE_ID = "__seldbg_style__";
-  const HIT_CLASS = "__seldbg_hit__";
-  const ACTIVE_CLASS = "__seldbg_active__";
   const ROW_CLASS = "__seldbg_row__";
   const COPY_BTN_CLASS = "__seldbg_copy_btn__";
   const TOAST_CLASS = "__seldbg_toast__";
   const TOAST_SHOW_CLASS = "__seldbg_toast_show__";
   const MAX_MATCHES = 150;
+  const MAX_OVERLAY_RENDER = 200;
 
   const state = {
     input: null,
     hits: [],
-    toastTimer: 0
+    selectedIndex: null,
+    toastTimer: 0,
+    backdropRaf: 0,
+    backdropTrackingReady: false,
+    selectedNode: null,
+    selectedNodeResizeObserver: null
   };
 
   const emptyPayload = { selector: "", count: 0, matches: [], error: "" };
   const inputStopEvents = ["keydown", "keyup", "keypress"];
+  const SVG_NS = "http://www.w3.org/2000/svg";
 
   const runtime = globalThis.chrome?.runtime || globalThis.browser?.runtime;
+  const $ = document.querySelector.bind(document);
+  const $id = document.getElementById.bind(document);
+  const el = (tag) => document.createElement(tag);
+  const svgEl = (tag) => document.createElementNS(SVG_NS, tag);
+  const setAttrs = (node, attrs) =>
+    Object.entries(attrs).reduce((nextNode, [key, value]) => {
+      nextNode.setAttribute(key, `${value}`);
+      return nextNode;
+    }, node);
+  const toOverlayFrame = (box) => ({
+    x: box.left - 3,
+    y: box.top - 3,
+    width: box.width + 6,
+    height: box.height + 6
+  });
+  const applyRectFrame = (node, frame) => {
+    return setAttrs(node, {
+      x: frame.x,
+      y: frame.y,
+      width: frame.width,
+      height: frame.height,
+      rx: 4,
+      ry: 4
+    });
+  };
+  const getOverlayNodes = () => {
+    const backdrop = $id(BACKDROP_ID);
+    if (!(backdrop instanceof HTMLElement)) return null;
+    const holes = backdrop.querySelector(`[data-role="${BACKDROP_HOLES_ROLE}"]`);
+    const boxes = backdrop.querySelector(`[data-role="${BACKDROP_BOXES_ROLE}"]`);
+    if (!(holes instanceof SVGGElement) || !(boxes instanceof SVGGElement)) return null;
+    return { backdrop, holes, boxes };
+  };
+
+  const scheduleBackdropUpdate = () => {
+    if (state.backdropRaf) return;
+    state.backdropRaf = requestAnimationFrame(() => {
+      state.backdropRaf = 0;
+      renderOverlay();
+    });
+  };
+
+  const ensureBackdropTracking = () => {
+    if (state.backdropTrackingReady) return;
+    state.backdropTrackingReady = true;
+    document.addEventListener("scroll", scheduleBackdropUpdate, { capture: true, passive: true });
+    globalThis.addEventListener("resize", scheduleBackdropUpdate, { passive: true });
+    const viewport = globalThis.visualViewport;
+    if (!viewport) return;
+    viewport.addEventListener("scroll", scheduleBackdropUpdate, { passive: true });
+    viewport.addEventListener("resize", scheduleBackdropUpdate, { passive: true });
+  };
+
+  const removeBackdropTracking = () => {
+    if (!state.backdropTrackingReady) return;
+    state.backdropTrackingReady = false;
+    document.removeEventListener("scroll", scheduleBackdropUpdate, true);
+    globalThis.removeEventListener("resize", scheduleBackdropUpdate);
+    const viewport = globalThis.visualViewport;
+    if (!viewport) return;
+    viewport.removeEventListener("scroll", scheduleBackdropUpdate);
+    viewport.removeEventListener("resize", scheduleBackdropUpdate);
+  };
+
+  const disconnectSelectedNodeObserver = () => {
+    if (!state.selectedNodeResizeObserver) return;
+    state.selectedNodeResizeObserver.disconnect();
+    state.selectedNodeResizeObserver = null;
+    state.selectedNode = null;
+  };
+
+  const syncSelectedNodeObserver = () => {
+    const selectedNode =
+      Number.isInteger(state.selectedIndex) && state.selectedIndex >= 0
+        ? state.hits[state.selectedIndex]
+        : null;
+    if (state.selectedNode === selectedNode) return;
+    disconnectSelectedNodeObserver();
+    if (!(selectedNode instanceof Element) || !globalThis.ResizeObserver) return;
+    state.selectedNode = selectedNode;
+    const observer = new ResizeObserver(scheduleBackdropUpdate);
+    observer.observe(selectedNode);
+    state.selectedNodeResizeObserver = observer;
+  };
 
   const sendUpdate = (payload) => {
     if (!runtime?.sendMessage) return;
@@ -47,14 +137,25 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const clearHits = () => {
-    for (const node of state.hits) node.classList.remove(HIT_CLASS, ACTIVE_CLASS);
     state.hits = [];
-    const backdrop = document.getElementById(BACKDROP_ID);
-    if (!backdrop) return;
+    state.selectedIndex = null;
+    disconnectSelectedNodeObserver();
+    if (state.backdropRaf) {
+      cancelAnimationFrame(state.backdropRaf);
+      state.backdropRaf = 0;
+    }
+    const overlay = getOverlayNodes();
+    if (!overlay) return;
+    const { backdrop, holes, boxes } = overlay;
     backdrop.setAttribute("hidden", "");
-    const holes = backdrop.querySelector(`[data-role="${BACKDROP_HOLES_ROLE}"]`);
-    if (!holes) return;
     holes.replaceChildren();
+    boxes.replaceChildren();
+  };
+
+  const destroyOverlay = () => {
+    clearHits();
+    removeBackdropTracking();
+    $id(BACKDROP_ID)?.remove();
   };
 
   const compactText = (text) => text.replace(/\s+/g, " ").trim().slice(0, 80);
@@ -62,7 +163,7 @@ if (!globalThis.__seldbg_booted) {
   const toItem = (node) => ({
     tag: node.tagName.toLowerCase(),
     id: node.id || "",
-    classes: [...node.classList].filter((name) => name !== HIT_CLASS && name !== ACTIVE_CLASS),
+    classes: [...node.classList],
     attrs: [...node.attributes]
       .filter(({ name }) => name !== "id" && name !== "class")
       .map(({ name, value }) => [name, value]),
@@ -97,15 +198,11 @@ if (!globalThis.__seldbg_booted) {
       sendUpdate({ selector, count: 0, matches: [], error });
       return;
     }
-    for (const node of matches) node.classList.add(HIT_CLASS);
     state.hits = matches;
-    if (matches.length) {
-      document.getElementById(BACKDROP_ID)?.removeAttribute("hidden");
-      updateBackdrop();
-      requestAnimationFrame(updateBackdrop);
-    }
+    syncSelectedNodeObserver();
+    renderOverlay();
     const [first] = matches;
-    first?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+    first?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
     sendUpdate({
       selector,
       count: matches.length,
@@ -121,11 +218,12 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const close = () => {
-    reset();
+    if (state.input) state.input.value = "";
+    sendUpdate(emptyPayload);
     if (state.toastTimer) clearTimeout(state.toastTimer);
-    document.getElementById(ROOT_ID)?.remove();
-    document.getElementById(BACKDROP_ID)?.remove();
-    document.getElementById(STYLE_ID)?.remove();
+    $id(ROOT_ID)?.remove();
+    destroyOverlay();
+    $id(STYLE_ID)?.remove();
     state.input = null;
     state.toastTimer = 0;
   };
@@ -134,40 +232,103 @@ if (!globalThis.__seldbg_booted) {
     if (!Number.isInteger(index)) return;
     const node = state.hits[index];
     if (!node) return;
-    for (const hit of state.hits) hit.classList.remove(ACTIVE_CLASS);
-    node.classList.add(ACTIVE_CLASS);
-    node.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-    updateBackdrop();
-    requestAnimationFrame(updateBackdrop);
+    state.selectedIndex = index;
+    syncSelectedNodeObserver();
+    node.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    renderOverlay();
+    scheduleBackdropUpdate();
   };
 
-  const updateBackdrop = () => {
-    const backdrop = document.getElementById(BACKDROP_ID);
-    if (!(backdrop instanceof HTMLElement) || backdrop.hasAttribute("hidden")) return;
-    const holes = backdrop.querySelector(`[data-role="${BACKDROP_HOLES_ROLE}"]`);
-    if (!(holes instanceof SVGGElement)) return;
-    const svgNs = "http://www.w3.org/2000/svg";
-    const rects = state.hits
-      .map((node) => node.getBoundingClientRect())
-      .filter((box) => box.width > 0 && box.height > 0)
-      .map((box) => {
-        const hole = document.createElementNS(svgNs, "rect");
-        hole.setAttribute("x", `${Math.max(0, box.left - 3)}`);
-        hole.setAttribute("y", `${Math.max(0, box.top - 3)}`);
-        hole.setAttribute("width", `${box.width + 6}`);
-        hole.setAttribute("height", `${box.height + 6}`);
-        hole.setAttribute("rx", "4");
-        hole.setAttribute("ry", "4");
-        return hole;
-      });
-    holes.replaceChildren(...rects);
+  const renderOverlay = () => {
+    const overlay = getOverlayNodes();
+    if (!overlay) return;
+    const { backdrop, holes, boxes } = overlay;
+    if (!state.hits.length) {
+      holes.replaceChildren();
+      boxes.replaceChildren();
+      backdrop.setAttribute("hidden", "");
+      return;
+    }
+    const viewport = globalThis.visualViewport;
+    const viewportWidth = viewport?.width || globalThis.innerWidth;
+    const viewportHeight = viewport?.height || globalThis.innerHeight;
+    const isBoxVisible = (box) =>
+      box.width > 0 &&
+      box.height > 0 &&
+      box.bottom >= 0 &&
+      box.right >= 0 &&
+      box.top <= viewportHeight &&
+      box.left <= viewportWidth;
+    const overlayRects = state.hits
+      .map((node, index) => ({ index, box: node.getBoundingClientRect() }))
+      .filter(({ box }) => isBoxVisible(box))
+      .slice(0, MAX_OVERLAY_RENDER);
+    if (!overlayRects.length) {
+      holes.replaceChildren();
+      boxes.replaceChildren();
+      backdrop.removeAttribute("hidden");
+      return;
+    }
+    backdrop.removeAttribute("hidden");
+    const holeRects = overlayRects.map(({ box }) =>
+      applyRectFrame(svgEl("rect"), toOverlayFrame(box))
+    );
+    const boxRects = overlayRects.map(({ index, box }) => {
+      const highlight = svgEl("rect");
+      const isActive = index === state.selectedIndex;
+      const stroke = isActive ? "var(--sdbg-accent)" : "var(--sdbg-highlight)";
+      const fill = isActive ? "rgba(82, 209, 255, 0.2)" : "var(--sdbg-highlight-soft)";
+      const strokeWidth = isActive ? "3" : "2";
+      applyRectFrame(highlight, toOverlayFrame(box));
+      setAttrs(highlight, { fill, stroke, "stroke-width": strokeWidth });
+      return highlight;
+    });
+    const activeIndex = overlayRects.findIndex(({ index }) => index === state.selectedIndex);
+    if (activeIndex >= 0) {
+      const activeRect = boxRects.splice(activeIndex, 1);
+      boxes.replaceChildren(...boxRects, ...activeRect);
+      holes.replaceChildren(...holeRects);
+      return;
+    }
+    holes.replaceChildren(...holeRects);
+    boxes.replaceChildren(...boxRects);
   };
 
   const ensureStyle = () => {
-    if (document.getElementById(STYLE_ID)) return;
-    const style = document.createElement("style");
+    if ($id(STYLE_ID)) return;
+    const martianMono400 = chrome.runtime.getURL(
+      "assets/fonts/martian-mono-latin-400-normal.woff2"
+    );
+    const martianMono500 = chrome.runtime.getURL(
+      "assets/fonts/martian-mono-latin-500-normal.woff2"
+    );
+    const martianMono700 = chrome.runtime.getURL(
+      "assets/fonts/martian-mono-latin-700-normal.woff2"
+    );
+    const style = el("style");
     style.id = STYLE_ID;
     style.textContent = `
+@font-face {
+  font-family: "Martian Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("${martianMono400}") format("woff2");
+}
+@font-face {
+  font-family: "Martian Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("${martianMono500}") format("woff2");
+}
+@font-face {
+  font-family: "Martian Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("${martianMono700}") format("woff2");
+}
 :root {
   --sdbg-bg: #220044;
   --sdbg-fg: rgba(255, 255, 255, 0.92);
@@ -178,14 +339,13 @@ if (!globalThis.__seldbg_booted) {
   --sdbg-highlight-soft: rgba(255, 122, 69, 0.2);
   --sdbg-backdrop: rgba(8, 3, 24, 0.58);
 }
-.${HIT_CLASS} { position: relative !important; z-index: 2147483645 !important; outline: 3px solid var(--sdbg-highlight) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-highlight), 0 0 0 3px rgba(255, 122, 69, 0.42), 0 0 20px 2px rgba(255, 122, 69, 0.5) !important; background-color: var(--sdbg-highlight-soft) !important; }
-.${ACTIVE_CLASS} { z-index: 2147483646 !important; outline: 3px solid var(--sdbg-accent) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-accent), 0 0 0 4px rgba(82, 209, 255, 0.5), 0 0 24px 4px rgba(82, 209, 255, 0.6) !important; }
 #${BACKDROP_ID} { position: fixed; inset: 0; z-index: 2147483644; pointer-events: none; }
 #${BACKDROP_ID}[hidden] { display: none; }
 #${BACKDROP_ID} svg { width: 100%; height: 100%; display: block; }
+#${BACKDROP_ID} [data-role="${BACKDROP_BOXES_ROLE}"] rect { vector-effect: non-scaling-stroke; }
 #${ROOT_ID} { position: sticky; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); padding: 8px 10px; }
 #${ROOT_ID} .${ROW_CLASS} { display: flex; gap: 8px; align-items: center; direction: ltr; }
-#${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 14px/1.2 monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; caret-color: var(--sdbg-accent); caret-shape: block; }
+#${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 400 14px/1.2 "Martian Mono", ui-monospace, monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; caret-color: var(--sdbg-accent); caret-shape: block; }
 #${ROOT_ID} .${COPY_BTN_CLASS} { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: var(--sdbg-soft); color: var(--sdbg-accent); cursor: pointer; padding: 0; transition: background-color 120ms ease, transform 120ms ease; }
 #${ROOT_ID} .${COPY_BTN_CLASS}:hover { background: var(--sdbg-soft-strong); transform: translateY(-1px); }
 #${ROOT_ID} .${COPY_BTN_CLASS}:focus-visible { outline: 2px solid var(--sdbg-accent); outline-offset: 1px; }
@@ -197,7 +357,7 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const showToast = (message) => {
-    const toast = document.querySelector(`#${ROOT_ID} .${TOAST_CLASS}`);
+    const toast = $(`#${ROOT_ID} .${TOAST_CLASS}`);
     if (!(toast instanceof HTMLElement)) return;
     toast.textContent = message;
     toast.classList.add(TOAST_SHOW_CLASS);
@@ -221,67 +381,65 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const makeCopyButton = () => {
-    const button = document.createElement("button");
-    const icon = document.createElement("img");
-    button.type = "button";
-    button.className = COPY_BTN_CLASS;
-    button.ariaLabel = "Copy selector";
-    icon.src = chrome.runtime.getURL("assets/copy.svg");
-    icon.alt = "";
+    const button = Object.assign(el("button"), {
+      type: "button",
+      className: COPY_BTN_CLASS,
+      ariaLabel: "Copy selector"
+    });
+    const icon = Object.assign(el("img"), {
+      src: chrome.runtime.getURL("assets/copy.svg"),
+      alt: ""
+    });
     button.append(icon);
     button.addEventListener("click", copySelector);
     return button;
   };
 
   const makeToast = () => {
-    const toast = document.createElement("div");
-    toast.className = TOAST_CLASS;
-    toast.textContent = "Selector copied";
-    return toast;
+    return Object.assign(el("div"), { className: TOAST_CLASS, textContent: "Selector copied" });
   };
 
   const mount = () => {
     if (state.input) return state.input;
     ensureStyle();
-    if (!document.getElementById(BACKDROP_ID)) {
-      const svgNs = "http://www.w3.org/2000/svg";
-      const backdrop = document.createElement("div");
-      const svg = document.createElementNS(svgNs, "svg");
-      const defs = document.createElementNS(svgNs, "defs");
-      const mask = document.createElementNS(svgNs, "mask");
-      const maskBg = document.createElementNS(svgNs, "rect");
-      const holes = document.createElementNS(svgNs, "g");
-      const shade = document.createElementNS(svgNs, "rect");
+    ensureBackdropTracking();
+    if (!$id(BACKDROP_ID)) {
+      const backdrop = el("div");
+      const svg = svgEl("svg");
+      const defs = svgEl("defs");
+      const mask = svgEl("mask");
+      const maskBg = svgEl("rect");
+      const holes = svgEl("g");
+      const boxes = svgEl("g");
+      const shade = svgEl("rect");
       backdrop.id = BACKDROP_ID;
-      backdrop.setAttribute("hidden", "");
+      setAttrs(backdrop, { hidden: "" });
       mask.id = `${BACKDROP_ID}_mask`;
-      maskBg.setAttribute("x", "0");
-      maskBg.setAttribute("y", "0");
-      maskBg.setAttribute("width", "100%");
-      maskBg.setAttribute("height", "100%");
-      maskBg.setAttribute("fill", "white");
-      holes.setAttribute("data-role", BACKDROP_HOLES_ROLE);
-      holes.setAttribute("fill", "black");
+      setAttrs(maskBg, { x: 0, y: 0, width: "100%", height: "100%", fill: "white" });
+      setAttrs(holes, { "data-role": BACKDROP_HOLES_ROLE, fill: "black" });
+      setAttrs(boxes, { "data-role": BACKDROP_BOXES_ROLE });
       mask.append(maskBg, holes);
       defs.append(mask);
-      shade.setAttribute("x", "0");
-      shade.setAttribute("y", "0");
-      shade.setAttribute("width", "100%");
-      shade.setAttribute("height", "100%");
-      shade.setAttribute("fill", "var(--sdbg-backdrop)");
-      shade.setAttribute("mask", `url(#${BACKDROP_ID}_mask)`);
-      svg.append(defs, shade);
+      setAttrs(shade, {
+        x: 0,
+        y: 0,
+        width: "100%",
+        height: "100%",
+        fill: "var(--sdbg-backdrop)",
+        mask: `url(#${BACKDROP_ID}_mask)`
+      });
+      svg.append(defs, shade, boxes);
       backdrop.append(svg);
       (document.body || document.documentElement).append(backdrop);
     }
-    const existing = document.getElementById(ROOT_ID);
+    const existing = $id(ROOT_ID);
     if (existing) {
       state.input = existing.querySelector("input");
       const row = existing.querySelector(`.${ROW_CLASS}`);
       const hasButton = existing.querySelector(`.${COPY_BTN_CLASS}`);
       if (row && !hasButton) row.append(makeCopyButton());
       if (!row && state.input) {
-        const nextRow = document.createElement("div");
+        const nextRow = el("div");
         nextRow.className = ROW_CLASS;
         state.input.replaceWith(nextRow);
         nextRow.append(state.input);
@@ -291,11 +449,11 @@ if (!globalThis.__seldbg_booted) {
       if (state.input) attachInputListeners(state.input);
       return state.input;
     }
-    const root = document.createElement("div");
-    const row = document.createElement("div");
+    const root = el("div");
+    const row = el("div");
     root.id = ROOT_ID;
     row.className = ROW_CLASS;
-    const input = document.createElement("input");
+    const input = el("input");
     input.type = "text";
     input.placeholder = "Type CSS selector...";
     input.autocomplete = "off";
