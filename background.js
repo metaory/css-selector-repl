@@ -58,6 +58,7 @@ const injectContentScript = (tabId) =>
     chrome.scripting
       .executeScript({
         target: { tabId },
+        world: "ISOLATED",
         files: ["content.js"]
       })
       .catch(() => undefined)

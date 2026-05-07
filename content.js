@@ -26,9 +26,12 @@ if (!globalThis.__seldbg_booted) {
   const emptyPayload = { selector: "", count: 0, matches: [], error: "" };
   const inputStopEvents = ["keydown", "keyup", "keypress"];
 
+  const runtime = globalThis.chrome?.runtime || globalThis.browser?.runtime;
+
   const sendUpdate = (payload) => {
-    chrome.runtime.sendMessage({ type: "selector:update", payload }, () => {
-      void chrome.runtime.lastError;
+    if (!runtime?.sendMessage) return;
+    runtime.sendMessage({ type: "selector:update", payload }, () => {
+      void globalThis.chrome?.runtime?.lastError;
     });
   };
   const evaluateFromInputEvent = (event) => evaluate(event.target.value);
