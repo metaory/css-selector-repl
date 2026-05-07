@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="icons/icon128.png" width="96" height="96" alt="selector-debugger logo">
-  <h1>selector-debugger</h1>
+  <img src="icons/icon128.png" width="96" height="96" alt="queryselector-debugger logo">
+  <h1>queryselector-debugger</h1>
 </div>
 
-Minimal MV3 Chrome extension for real-time CSS selector debugging.
+Debug CSS selectors live
 
 ## What it does
 

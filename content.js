@@ -6,6 +6,8 @@ if (!globalThis.__seldbg_booted) {
   globalThis.__seldbg_booted = true;
 
   const ROOT_ID = "__seldbg_root__";
+  const BACKDROP_ID = "__seldbg_backdrop__";
+  const BACKDROP_HOLES_ROLE = "__seldbg_backdrop_holes__";
   const STYLE_ID = "__seldbg_style__";
   const HIT_CLASS = "__seldbg_hit__";
   const ACTIVE_CLASS = "__seldbg_active__";
@@ -44,6 +46,12 @@ if (!globalThis.__seldbg_booted) {
   const clearHits = () => {
     for (const node of state.hits) node.classList.remove(HIT_CLASS, ACTIVE_CLASS);
     state.hits = [];
+    const backdrop = document.getElementById(BACKDROP_ID);
+    if (!backdrop) return;
+    backdrop.setAttribute("hidden", "");
+    const holes = backdrop.querySelector(`[data-role="${BACKDROP_HOLES_ROLE}"]`);
+    if (!holes) return;
+    holes.replaceChildren();
   };
 
   const compactText = (text) => text.replace(/\s+/g, " ").trim().slice(0, 80);
@@ -59,7 +67,10 @@ if (!globalThis.__seldbg_booted) {
   });
 
   const isDebuggerNode = (node) =>
-    node.id === ROOT_ID || node.id === STYLE_ID || node.closest?.(`#${ROOT_ID}`);
+    node.id === ROOT_ID ||
+    node.id === BACKDROP_ID ||
+    node.id === STYLE_ID ||
+    node.closest?.(`#${ROOT_ID}`);
 
   const selectNodes = (selector) => {
     try {
@@ -85,6 +96,11 @@ if (!globalThis.__seldbg_booted) {
     }
     for (const node of matches) node.classList.add(HIT_CLASS);
     state.hits = matches;
+    if (matches.length) {
+      document.getElementById(BACKDROP_ID)?.removeAttribute("hidden");
+      updateBackdrop();
+      requestAnimationFrame(updateBackdrop);
+    }
     const [first] = matches;
     first?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
     sendUpdate({
@@ -105,6 +121,7 @@ if (!globalThis.__seldbg_booted) {
     reset();
     if (state.toastTimer) clearTimeout(state.toastTimer);
     document.getElementById(ROOT_ID)?.remove();
+    document.getElementById(BACKDROP_ID)?.remove();
     document.getElementById(STYLE_ID)?.remove();
     state.input = null;
     state.toastTimer = 0;
@@ -117,6 +134,30 @@ if (!globalThis.__seldbg_booted) {
     for (const hit of state.hits) hit.classList.remove(ACTIVE_CLASS);
     node.classList.add(ACTIVE_CLASS);
     node.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+    updateBackdrop();
+    requestAnimationFrame(updateBackdrop);
+  };
+
+  const updateBackdrop = () => {
+    const backdrop = document.getElementById(BACKDROP_ID);
+    if (!(backdrop instanceof HTMLElement) || backdrop.hasAttribute("hidden")) return;
+    const holes = backdrop.querySelector(`[data-role="${BACKDROP_HOLES_ROLE}"]`);
+    if (!(holes instanceof SVGGElement)) return;
+    const svgNs = "http://www.w3.org/2000/svg";
+    const rects = state.hits
+      .map((node) => node.getBoundingClientRect())
+      .filter((box) => box.width > 0 && box.height > 0)
+      .map((box) => {
+        const hole = document.createElementNS(svgNs, "rect");
+        hole.setAttribute("x", `${Math.max(0, box.left - 3)}`);
+        hole.setAttribute("y", `${Math.max(0, box.top - 3)}`);
+        hole.setAttribute("width", `${box.width + 6}`);
+        hole.setAttribute("height", `${box.height + 6}`);
+        hole.setAttribute("rx", "4");
+        hole.setAttribute("ry", "4");
+        return hole;
+      });
+    holes.replaceChildren(...rects);
   };
 
   const ensureStyle = () => {
@@ -131,10 +172,14 @@ if (!globalThis.__seldbg_booted) {
   --sdbg-soft: rgba(255, 255, 255, 0.08);
   --sdbg-soft-strong: rgba(255, 255, 255, 0.16);
   --sdbg-highlight: #ff7a45;
-  --sdbg-highlight-soft: rgba(255, 122, 69, 0.12);
+  --sdbg-highlight-soft: rgba(255, 122, 69, 0.2);
+  --sdbg-backdrop: rgba(8, 3, 24, 0.58);
 }
-.${HIT_CLASS} { outline: 2px dashed var(--sdbg-highlight) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-highlight) !important; background-color: var(--sdbg-highlight-soft) !important; }
-.${ACTIVE_CLASS} { outline: 2px solid var(--sdbg-accent) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-accent), 0 0 0 3px var(--sdbg-accent), 0 0 12px 2px var(--sdbg-accent) !important; }
+.${HIT_CLASS} { position: relative !important; z-index: 2147483645 !important; outline: 3px solid var(--sdbg-highlight) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-highlight), 0 0 0 3px rgba(255, 122, 69, 0.42), 0 0 20px 2px rgba(255, 122, 69, 0.5) !important; background-color: var(--sdbg-highlight-soft) !important; }
+.${ACTIVE_CLASS} { z-index: 2147483646 !important; outline: 3px solid var(--sdbg-accent) !important; outline-offset: -2px !important; box-shadow: inset 0 0 0 2px var(--sdbg-accent), 0 0 0 4px rgba(82, 209, 255, 0.5), 0 0 24px 4px rgba(82, 209, 255, 0.6) !important; }
+#${BACKDROP_ID} { position: fixed; inset: 0; z-index: 2147483644; pointer-events: none; }
+#${BACKDROP_ID}[hidden] { display: none; }
+#${BACKDROP_ID} svg { width: 100%; height: 100%; display: block; }
 #${ROOT_ID} { position: sticky; left: 0; right: 0; bottom: 0; z-index: 2147483647; background: var(--sdbg-bg); padding: 8px 10px; }
 #${ROOT_ID} .${ROW_CLASS} { display: flex; gap: 8px; align-items: center; direction: ltr; }
 #${ROOT_ID} input { flex: 1; min-width: 0; box-sizing: border-box; border: 0; outline: 0; border-radius: 10px; padding: 10px 12px; font: 14px/1.2 monospace; background: var(--sdbg-bg); color: var(--sdbg-fg); direction: ltr; text-align: left; caret-color: var(--sdbg-accent); caret-shape: block; }
@@ -195,6 +240,37 @@ if (!globalThis.__seldbg_booted) {
   const mount = () => {
     if (state.input) return state.input;
     ensureStyle();
+    if (!document.getElementById(BACKDROP_ID)) {
+      const svgNs = "http://www.w3.org/2000/svg";
+      const backdrop = document.createElement("div");
+      const svg = document.createElementNS(svgNs, "svg");
+      const defs = document.createElementNS(svgNs, "defs");
+      const mask = document.createElementNS(svgNs, "mask");
+      const maskBg = document.createElementNS(svgNs, "rect");
+      const holes = document.createElementNS(svgNs, "g");
+      const shade = document.createElementNS(svgNs, "rect");
+      backdrop.id = BACKDROP_ID;
+      backdrop.setAttribute("hidden", "");
+      mask.id = `${BACKDROP_ID}_mask`;
+      maskBg.setAttribute("x", "0");
+      maskBg.setAttribute("y", "0");
+      maskBg.setAttribute("width", "100%");
+      maskBg.setAttribute("height", "100%");
+      maskBg.setAttribute("fill", "white");
+      holes.setAttribute("data-role", BACKDROP_HOLES_ROLE);
+      holes.setAttribute("fill", "black");
+      mask.append(maskBg, holes);
+      defs.append(mask);
+      shade.setAttribute("x", "0");
+      shade.setAttribute("y", "0");
+      shade.setAttribute("width", "100%");
+      shade.setAttribute("height", "100%");
+      shade.setAttribute("fill", "var(--sdbg-backdrop)");
+      shade.setAttribute("mask", `url(#${BACKDROP_ID}_mask)`);
+      svg.append(defs, shade);
+      backdrop.append(svg);
+      (document.body || document.documentElement).append(backdrop);
+    }
     const existing = document.getElementById(ROOT_ID);
     if (existing) {
       state.input = existing.querySelector("input");
