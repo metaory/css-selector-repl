@@ -1,38 +1,5 @@
-@font-face {
-  font-family: "Baloo 2";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("assets/fonts/baloo-2-latin-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Baloo 2";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("assets/fonts/baloo-2-latin-600-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Baloo 2";
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url("assets/fonts/baloo-2-latin-800-normal.woff2") format("woff2");
-}
-
-:root {
-  --sdbg-bg: #220044;
-  --sdbg-fg: rgba(255, 255, 255, 0.92);
-  --sdbg-accent: #52d1ff;
-  --sdbg-main: rgba(220, 60, 110, 0.6);
-  --sdbg-soft: rgba(255, 255, 255, 0.08);
-  --sdbg-soft-strong: rgba(255, 255, 255, 0.16);
-  --sdbg-highlight: #ff7a45;
-  --sdbg-highlight-soft: rgba(255, 122, 69, 0.2);
-  --sdbg-backdrop: rgba(8, 3, 24, 0.58);
-}
+@import url("fonts.css");
+@import url("tokens.css");
 
 #__seldbg_backdrop__ {
   position: fixed;
@@ -73,15 +40,6 @@
     box-shadow: rgb(255, 255, 255) 0px 0px 40px, rgb(255 255 255 / 50%) 0px 0px 60px;
     border-radius: 14px;
     background: rgb(255 255 255 / 24%);
-  }
-
-  & ::before {
-    content: "";
-    position: absolute;
-    width: 200px;
-    height: 200px;
-    background: red;
-    left: 200px;
   }
 
   & input {

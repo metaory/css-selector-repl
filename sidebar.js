@@ -17,13 +17,17 @@ const defaultPayload = {
 const state = {
   tabId: null,
   selectedIndex: null,
+  hoveredIndex: null,
   payload: defaultPayload
 };
 
 const fmtAttr = ([k, v]) =>
   v ? `[${k}="${v.length > 40 ? `${v.slice(0, 40)}…` : v}"]` : `[${k}]`;
 
-const toLabel = (item) => {
+const normalizeText = (text = "") => `${text}`.trim().replace(/\s+/g, " ");
+const firstTextToken = (text = "") => text.match(/^\S+/)?.[0] || "";
+
+const toLabelParts = (item) => {
   const selector = [
     item.tag,
     item.id && `#${item.id}`,
@@ -32,12 +36,16 @@ const toLabel = (item) => {
   ]
     .filter(Boolean)
     .join("");
-
-  return item.text ? `${selector} "${item.text}"` : selector;
+  const fullText = normalizeText(item.text);
+  const firstWord = firstTextToken(fullText);
+  const previewText = firstWord ? `${firstWord}${fullText.length > firstWord.length ? "…" : ""}` : "";
+  return { selector, previewText, fullText };
 };
 
 const render = (payload) => {
   const next = { ...defaultPayload, ...(payload || {}) };
+  const selectorChanged = next.selector !== state.payload.selector;
+  if (selectorChanged) clearHoveredIndex();
   const selectedIndex = next.selector !== state.payload.selector ? null : state.selectedIndex;
   state.selectedIndex = selectedIndex !== null && selectedIndex < next.matches.length ? selectedIndex : null;
   state.payload = next;
@@ -45,21 +53,40 @@ const render = (payload) => {
   metaNode.textContent = selector ? `${count} match(es) for: ${selector}` : "No selector yet.";
   errorNode.textContent = error;
   errorNode.style.display = error ? "block" : "none";
-  listNode.textContent = "";
   const toRow = (item, index) => {
-    const row = Object.assign(el("li"), { textContent: toLabel(item) });
+    const { selector, previewText, fullText } = toLabelParts(item);
+    const row = el("li");
+    const selectorNode = Object.assign(el("span"), { className: "entry-selector", textContent: selector });
+    row.append(selectorNode);
+    if (previewText) {
+      const previewNode = Object.assign(el("span"), {
+        className: "entry-text-preview",
+        textContent: ` "${previewText}"`
+      });
+      const fullNode = Object.assign(el("span"), {
+        className: "entry-text-full",
+        textContent: ` "${fullText}"`
+      });
+      row.append(previewNode, fullNode);
+    }
     row.dataset.index = `${index}`;
     if (index === state.selectedIndex) row.classList.add("is-active");
     return row;
   };
-  const rows = matches.reduce(
-    (fragment, item, index) => {
-      fragment.append(toRow(item, index));
-      return fragment;
-    },
-    document.createDocumentFragment()
-  );
-  listNode.append(rows);
+  listNode.replaceChildren(...matches.map(toRow));
+};
+
+const setHoveredIndex = (index) => {
+  if (!Number.isInteger(index) || !state.tabId) return;
+  if (state.hoveredIndex === index) return;
+  state.hoveredIndex = index;
+  sendRuntime({ type: "selector:hover", tabId: state.tabId, index });
+};
+
+const clearHoveredIndex = () => {
+  if (!state.tabId || state.hoveredIndex === null) return;
+  state.hoveredIndex = null;
+  sendRuntime({ type: "selector:hover-clear", tabId: state.tabId });
 };
 
 const focusItem = (index) => {
@@ -89,6 +116,29 @@ listNode.addEventListener("click", (event) => {
   const index = Number(row.dataset.index);
   if (!Number.isInteger(index)) return;
   focusItem(index);
+});
+
+listNode.addEventListener("mouseover", (event) => {
+  const row = getRowFromTarget(event.target);
+  if (!row) return;
+  if (row === getRowFromTarget(event.relatedTarget)) return;
+  const index = Number(row.dataset.index);
+  if (!Number.isInteger(index)) return;
+  setHoveredIndex(index);
+});
+
+listNode.addEventListener("mouseout", (event) => {
+  const row = getRowFromTarget(event.target);
+  if (!row) return;
+  const nextRow = getRowFromTarget(event.relatedTarget);
+  if (row === nextRow) return;
+  if (!nextRow) {
+    clearHoveredIndex();
+    return;
+  }
+  const index = Number(nextRow.dataset.index);
+  if (!Number.isInteger(index)) return;
+  setHoveredIndex(index);
 });
 
 chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {

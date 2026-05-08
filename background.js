@@ -11,7 +11,7 @@ const emptyPayload = {
   matches: [],
   error: ""
 };
-const defaultTabState = { active: false, payload: emptyPayload };
+const defaultTabState = { active: false, payload: { ...emptyPayload } };
 const enableActionSidebar = () =>
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => undefined);
 
@@ -133,7 +133,7 @@ const activateDebugger = (tabId) => {
 const deactivateDebugger = (tabId) => {
   if (!isTabId(tabId)) return Promise.resolve();
   setTabActive(tabId, false);
-  setTabPayload(tabId, { ...emptyPayload, tabId });
+  setTabPayload(tabId, emptyPayload);
   return Promise.all([
     closeSidePanel(tabId),
     ensureContentScript(tabId).then(() => sendTabMessage(tabId, { type: "debugger:close" }))
@@ -195,6 +195,18 @@ const messageHandlers = {
     if (!isTabId(message.tabId) || !Number.isInteger(message.index)) return;
     ensureContentScript(message.tabId).then(() =>
       sendTabMessage(message.tabId, { type: "selector:focus", index: message.index })
+    );
+  },
+  "selector:hover": (message) => {
+    if (!isTabId(message.tabId) || !Number.isInteger(message.index)) return;
+    ensureContentScript(message.tabId).then(() =>
+      sendTabMessage(message.tabId, { type: "selector:hover", index: message.index })
+    );
+  },
+  "selector:hover-clear": (message) => {
+    if (!isTabId(message.tabId)) return;
+    ensureContentScript(message.tabId).then(() =>
+      sendTabMessage(message.tabId, { type: "selector:hover-clear" })
     );
   },
   "sidebar:init": (message, _sender, sendResponse) => {

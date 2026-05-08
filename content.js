@@ -1,13 +1,9 @@
-if (globalThis.__seldbg_booted) {
-  void 0;
-}
-
 if (!globalThis.__seldbg_booted) {
   globalThis.__seldbg_booted = true;
 
   const ROOT_ID = "__seldbg_root__";
   const BACKDROP_ID = "__seldbg_backdrop__";
-  const BACKDROP_HOLES_ROLE = "__seldbg_backdrop_holes__";
+  const BACKDROP_SHADE_ROLE = "__seldbg_backdrop_shade__";
   const BACKDROP_BOXES_ROLE = "__seldbg_backdrop_boxes__";
   const ROW_CLASS = "__seldbg_row__";
   const COPY_BTN_CLASS = "__seldbg_copy_btn__";
@@ -20,6 +16,7 @@ if (!globalThis.__seldbg_booted) {
     input: null,
     hits: [],
     selectedIndex: null,
+    hoveredIndex: null,
     toastTimer: 0,
     backdropRaf: 0,
     backdropTrackingReady: false,
@@ -47,8 +44,8 @@ if (!globalThis.__seldbg_booted) {
     width: box.width + 6,
     height: box.height + 6
   });
-  const applyRectFrame = (node, frame) => {
-    return setAttrs(node, {
+  const applyRectFrame = (node, frame) =>
+    setAttrs(node, {
       x: frame.x,
       y: frame.y,
       width: frame.width,
@@ -56,15 +53,18 @@ if (!globalThis.__seldbg_booted) {
       rx: 4,
       ry: 4
     });
-  };
   const getOverlayNodes = () => {
     const backdrop = $id(BACKDROP_ID);
     if (!(backdrop instanceof HTMLElement)) return null;
-    const holes = backdrop.querySelector(`[data-role="${BACKDROP_HOLES_ROLE}"]`);
+    const shade = backdrop.querySelector(`[data-role="${BACKDROP_SHADE_ROLE}"]`);
     const boxes = backdrop.querySelector(`[data-role="${BACKDROP_BOXES_ROLE}"]`);
-    if (!(holes instanceof SVGGElement) || !(boxes instanceof SVGGElement)) return null;
-    return { backdrop, holes, boxes };
+    if (!(shade instanceof SVGPathElement) || !(boxes instanceof SVGGElement)) return null;
+    return { backdrop, shade, boxes };
   };
+  const getActiveIndex = () =>
+    Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= 0
+      ? state.hoveredIndex
+      : state.selectedIndex;
 
   const scheduleBackdropUpdate = () => {
     if (state.backdropRaf) return;
@@ -104,16 +104,14 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const syncSelectedNodeObserver = () => {
-    const selectedNode =
-      Number.isInteger(state.selectedIndex) && state.selectedIndex >= 0
-        ? state.hits[state.selectedIndex]
-        : null;
-    if (state.selectedNode === selectedNode) return;
+    const activeIndex = getActiveIndex();
+    const activeNode = Number.isInteger(activeIndex) ? state.hits[activeIndex] : null;
+    if (state.selectedNode === activeNode) return;
     disconnectSelectedNodeObserver();
-    if (!(selectedNode instanceof Element) || !globalThis.ResizeObserver) return;
-    state.selectedNode = selectedNode;
+    if (!(activeNode instanceof Element) || !globalThis.ResizeObserver) return;
+    state.selectedNode = activeNode;
     const observer = new ResizeObserver(scheduleBackdropUpdate);
-    observer.observe(selectedNode);
+    observer.observe(activeNode);
     state.selectedNodeResizeObserver = observer;
   };
 
@@ -133,10 +131,12 @@ if (!globalThis.__seldbg_booted) {
     evaluate("");
   };
   const stopInputEventPropagation = (event) => event.stopPropagation();
+  const selectInputOnFocus = (event) => event.target.select();
   const attachInputListeners = (input) => {
     if (input.dataset.seldbgInputReady === "1") return input;
     input.dataset.seldbgInputReady = "1";
     input.addEventListener("keydown", clearInputOnEscape);
+    input.addEventListener("focus", selectInputOnFocus);
     for (const eventName of inputStopEvents) {
       input.addEventListener(eventName, stopInputEventPropagation);
     }
@@ -147,6 +147,7 @@ if (!globalThis.__seldbg_booted) {
   const clearHits = () => {
     state.hits = [];
     state.selectedIndex = null;
+    state.hoveredIndex = null;
     disconnectSelectedNodeObserver();
     if (state.backdropRaf) {
       cancelAnimationFrame(state.backdropRaf);
@@ -154,9 +155,9 @@ if (!globalThis.__seldbg_booted) {
     }
     const overlay = getOverlayNodes();
     if (!overlay) return;
-    const { backdrop, holes, boxes } = overlay;
+    const { backdrop, shade, boxes } = overlay;
     backdrop.setAttribute("hidden", "");
-    holes.replaceChildren();
+    shade.setAttribute("d", "");
     boxes.replaceChildren();
   };
 
@@ -248,9 +249,9 @@ if (!globalThis.__seldbg_booted) {
   const renderOverlay = () => {
     const overlay = getOverlayNodes();
     if (!overlay) return;
-    const { backdrop, holes, boxes } = overlay;
+    const { backdrop, shade, boxes } = overlay;
     if (!state.hits.length) {
-      holes.replaceChildren();
+      shade.setAttribute("d", "");
       boxes.replaceChildren();
       backdrop.setAttribute("hidden", "");
       return;
@@ -270,33 +271,39 @@ if (!globalThis.__seldbg_booted) {
       .filter(({ box }) => isBoxVisible(box))
       .slice(0, MAX_OVERLAY_RENDER);
     if (!overlayRects.length) {
-      holes.replaceChildren();
+      shade.setAttribute("d", "");
       boxes.replaceChildren();
-      backdrop.removeAttribute("hidden");
+      backdrop.setAttribute("hidden", "");
       return;
     }
     backdrop.removeAttribute("hidden");
-    const holeRects = overlayRects.map(({ box }) =>
-      applyRectFrame(svgEl("rect"), toOverlayFrame(box))
-    );
+    const toHolePath = (frame) =>
+      `M${frame.x} ${frame.y}h${frame.width}v${frame.height}h-${frame.width}Z`;
+    const activeIndex = getActiveIndex();
+    const shadePath = `M0 0H${viewportWidth}V${viewportHeight}H0Z ${overlayRects
+      .map(({ box }) => toHolePath(toOverlayFrame(box)))
+      .join(" ")}`;
+    shade.setAttribute("d", shadePath);
     const boxRects = overlayRects.map(({ index, box }) => {
       const highlight = svgEl("rect");
-      const isActive = index === state.selectedIndex;
-      const stroke = isActive ? "var(--sdbg-accent)" : "var(--sdbg-highlight)";
-      const fill = isActive ? "rgba(82, 209, 255, 0.2)" : "var(--sdbg-highlight-soft)";
+      const isActive = index === activeIndex;
+      const stroke = isActive
+        ? "var(--sdbg-accent, rgba(82, 209, 255, 1))"
+        : "var(--sdbg-highlight, rgba(255, 122, 69, 1))";
+      const fill = isActive
+        ? "var(--sdbg-accent-soft, rgba(82, 209, 255, 0.2))"
+        : "var(--sdbg-highlight-soft, rgba(255, 122, 69, 0.2))";
       const strokeWidth = isActive ? "3" : "2";
       applyRectFrame(highlight, toOverlayFrame(box));
       setAttrs(highlight, { fill, stroke, "stroke-width": strokeWidth });
       return highlight;
     });
-    const activeIndex = overlayRects.findIndex(({ index }) => index === state.selectedIndex);
-    if (activeIndex >= 0) {
-      const activeRect = boxRects.splice(activeIndex, 1);
+    const activeRectIndex = overlayRects.findIndex(({ index }) => index === activeIndex);
+    if (activeRectIndex >= 0) {
+      const activeRect = boxRects.splice(activeRectIndex, 1);
       boxes.replaceChildren(...boxRects, ...activeRect);
-      holes.replaceChildren(...holeRects);
       return;
     }
-    holes.replaceChildren(...holeRects);
     boxes.replaceChildren(...boxRects);
   };
 
@@ -349,29 +356,21 @@ if (!globalThis.__seldbg_booted) {
     if (!$id(BACKDROP_ID)) {
       const backdrop = el("div");
       const svg = svgEl("svg");
-      const defs = svgEl("defs");
-      const mask = svgEl("mask");
-      const maskBg = svgEl("rect");
-      const holes = svgEl("g");
+      const shade = svgEl("path");
       const boxes = svgEl("g");
-      const shade = svgEl("rect");
       backdrop.id = BACKDROP_ID;
       setAttrs(backdrop, { hidden: "" });
-      mask.id = `${BACKDROP_ID}_mask`;
-      setAttrs(maskBg, { x: 0, y: 0, width: "100%", height: "100%", fill: "white" });
-      setAttrs(holes, { "data-role": BACKDROP_HOLES_ROLE, fill: "black" });
-      setAttrs(boxes, { "data-role": BACKDROP_BOXES_ROLE });
-      mask.append(maskBg, holes);
-      defs.append(mask);
       setAttrs(shade, {
-        x: 0,
-        y: 0,
-        width: "100%",
-        height: "100%",
-        fill: "var(--sdbg-backdrop)",
-        mask: `url(#${BACKDROP_ID}_mask)`
+        "data-role": BACKDROP_SHADE_ROLE,
+        fill: "var(--sdbg-backdrop, rgba(8, 3, 24, 0.34))",
+        "fill-rule": "evenodd",
+        d: ""
       });
-      svg.append(defs, shade, boxes);
+      setAttrs(boxes, {
+        "data-role": BACKDROP_BOXES_ROLE,
+        fill: "rgba(82, 209, 255, 0.16)"
+      });
+      svg.append(shade, boxes);
       backdrop.append(svg);
       (document.body || document.documentElement).append(backdrop);
     }
@@ -414,11 +413,11 @@ if (!globalThis.__seldbg_booted) {
     const input = mount();
     const focusInput = () => {
       input.focus({ preventScroll: true });
-      const point = input.value.length;
-      input.setSelectionRange(point, point);
+      input.select();
     };
     focusInput();
     requestAnimationFrame(focusInput);
+    setTimeout(focusInput, 120);
     evaluate(input.value);
   };
 
@@ -426,7 +425,21 @@ if (!globalThis.__seldbg_booted) {
     "debugger:open": () => open(),
     "debugger:reset": () => reset(),
     "debugger:close": () => close(),
-    "selector:focus": (message) => focusByIndex(message.index)
+    "selector:focus": (message) => focusByIndex(message.index),
+    "selector:hover": (message) => {
+      if (!Number.isInteger(message.index) || !state.hits[message.index]) return;
+      state.hoveredIndex = message.index;
+      syncSelectedNodeObserver();
+      renderOverlay();
+      scheduleBackdropUpdate();
+    },
+    "selector:hover-clear": () => {
+      if (state.hoveredIndex === null) return;
+      state.hoveredIndex = null;
+      syncSelectedNodeObserver();
+      renderOverlay();
+      scheduleBackdropUpdate();
+    }
   };
 
   chrome.runtime.onMessage.addListener((message) => {
