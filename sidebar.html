@@ -37,6 +37,7 @@
         --sdbg-match: #ff7a45;
         --sdbg-active: #52d1ff;
       }
+      * { font-family: "Baloo 2", system-ui, sans-serif; }
       body {
         margin: 0;
         /* background: var(--sdbg-bg); */
@@ -56,8 +57,9 @@
       #meta { margin: 0 0 10px; color: var(--sdbg-muted); word-break: break-word; }
       #error { margin: 0 0 10px; color: var(--sdbg-error); display: none; }
       #list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-      #list li { border: 2px dashed var(--sdbg-match); border-radius: 12px; padding: 8px; background: var(--sdbg-surface); color: var(--sdbg-text); cursor: pointer; font-family: "Baloo 2", system-ui, sans-serif; font-weight: 400; word-break: break-word; }
-      #list li.is-active { border-color: var(--sdbg-active); font-weight: 600; }
+      #list li { border: 2px dashed var(--sdbg-match); border-radius: 12px; padding: 8px; background: var(--sdbg-surface); color: var(--sdbg-text); cursor: pointer; font-size: 16px; line-height: 1.35; font-weight: 600; word-break: break-word; transition: font-size 120ms ease, font-weight 120ms ease, border-color 120ms ease; }
+      #list li:hover { font-size: 18px; font-weight: 700; }
+      #list li.is-active { border-color: var(--sdbg-active); font-size: 20px; font-weight: 800; }
     </style>
   </head>
   <body>

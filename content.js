@@ -124,10 +124,19 @@ if (!globalThis.__seldbg_booted) {
     });
   };
   const evaluateFromInputEvent = (event) => evaluate(event.target.value);
+  const clearInputOnEscape = (event) => {
+    if (event.key !== "Escape") return;
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || !input.value) return;
+    event.preventDefault();
+    input.value = "";
+    evaluate("");
+  };
   const stopInputEventPropagation = (event) => event.stopPropagation();
   const attachInputListeners = (input) => {
     if (input.dataset.seldbgInputReady === "1") return input;
     input.dataset.seldbgInputReady = "1";
+    input.addEventListener("keydown", clearInputOnEscape);
     for (const eventName of inputStopEvents) {
       input.addEventListener(eventName, stopInputEventPropagation);
     }
