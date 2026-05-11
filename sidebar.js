@@ -146,3 +146,16 @@ chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
   fetchInitial();
 });
 
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.key !== "Escape") return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (!state.tabId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    sendRuntime({ type: "debugger:reset", tabId: state.tabId });
+  },
+  true
+);
+

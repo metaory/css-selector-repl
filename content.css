@@ -26,20 +26,23 @@
   position: sticky;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 16px;
   z-index: 2147483647;
-  padding: 12px 18px;
+  /* padding: 12px 18px; */
+  padding: 12px 40px;
+  isolation: isolate;
 
   & .__seldbg_row__ {
     display: flex;
     gap: 8px;
     align-items: center;
     direction: ltr;
-    backdrop-filter: brightness(.9) blur(12px);
-    outline: solid 5px white;
-    box-shadow: rgb(255, 255, 255) 0px 0px 40px, rgb(255 255 255 / 50%) 0px 0px 60px;
-    border-radius: 14px;
-    background: rgb(255 255 255 / 24%);
+    outline: solid 4px white;
+    border-radius: 18px;
+    /* box-shadow: rgb(255, 255, 255) 0px 0px 40px, rgba(255, 255, 255, 0.5) 0px 0px 60px; */
+    box-shadow: rgba(255, 255, 255, 0.12) 0px 0px 0px 1px, rgba(225, 29, 140, 0.45) 0px 12px 36px, rgba(124, 58, 237, 0.55) 0px 0px 48px, rgba(82, 209, 255, 0.5) 0px 0px 72px;
+    background: rgb(255 255 255 / 40%);
+    backdrop-filter: brightness(0.9) blur(20px);
   }
 
   & input {
@@ -48,9 +51,9 @@
     box-sizing: border-box;
     border: 0;
     outline: 0;
-    border-radius: 10px;
-    padding: 16px 16px 10px;
-    font: 800 24px / 1 "Baloo 2", system-ui, sans-serif;
+    /* border-radius: 10px; */
+    padding: 10px 16px 10px;
+    font: 800 26px / 1 "Baloo 2", system-ui, sans-serif;
     background: transparent;
     color: var(--sdbg-bg);
     direction: ltr;
@@ -66,8 +69,9 @@
   }
 
   & .__seldbg_copy_btn__ {
-    width: 40px;
-    height: 40px;
+    /* width: 40px; */
+    /* height: 40px; */
+    margin-right: 12px;
     display: grid;
     place-items: center;
     border: 0;
@@ -76,11 +80,12 @@
     color: var(--sdbg-accent);
     cursor: pointer;
     padding: 0;
-    transition: background-color 120ms ease, transform 120ms ease;
+    transition: all 120ms ease, transform 120ms ease;
 
     &:hover {
       background: var(--sdbg-soft-strong);
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      filter: sepia(1) hue-rotate(150deg) saturate(2);
     }
 
     &:focus-visible {
@@ -89,8 +94,8 @@
     }
 
     & img {
-      width: 20px;
-      height: 20px;
+      width: 40px;
+      height: 40px;
       display: block;
       pointer-events: none;
     }
@@ -98,22 +103,40 @@
 
   & .__seldbg_toast__ {
     position: absolute;
-    right: 10px;
-    bottom: calc(100% + 8px);
-    max-width: min(60vw, 320px);
-    background: var(--sdbg-soft-strong);
-    color: var(--sdbg-fg);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font: 12px/1.2 system-ui, sans-serif;
+    left: 50%;
+    /* background: #383754a8; */
+    backdrop-filter: blur(6px);
+    bottom: calc(100% + 16px);
+    box-sizing: border-box;
+    width: max-content;
+    max-width: min(92vw, 560px);
+    padding: 20px 40px;
+    text-align: center;
+    font: 800 28px/1.12 "Baloo 2", system-ui, sans-serif;
+    letter-spacing: 0.02em;
+    color: #fff;
+    text-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+    background: linear-gradient(
+      125deg,
+      #e11d8c 0%,
+      #7c3aed 42%,
+      var(--sdbg-accent) 100%
+    );
+    border: 3px solid rgb(255 255 255 / 0.38);
+    border-radius: 18px;
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.12),
+      0 12px 36px rgb(225 29 140 / 0.45),
+      0 0 48px rgb(124 58 237 / 0.55),
+      0 0 72px rgb(82 209 255 / 0.5);
     opacity: 0;
-    transform: translateY(6px);
-    transition: opacity 120ms ease, transform 120ms ease;
+    transform: translate(-50%, 12px);
+    transition: opacity 180ms ease, transform 180ms ease;
     pointer-events: none;
 
     &.__seldbg_toast_show__ {
       opacity: 1;
-      transform: translateY(0);
+      transform: translate(-50%, 0);
     }
   }
 }

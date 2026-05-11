@@ -209,6 +209,12 @@ const messageHandlers = {
       sendTabMessage(message.tabId, { type: "selector:hover-clear" })
     );
   },
+  "debugger:reset": (message) => {
+    if (!isTabId(message.tabId)) return;
+    ensureContentScript(message.tabId).then(() =>
+      sendTabMessage(message.tabId, { type: "debugger:reset" })
+    );
+  },
   "sidebar:init": (message, _sender, sendResponse) => {
     sendResponse(getTabState(message.tabId).payload || emptyPayload);
   }

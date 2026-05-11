@@ -38,11 +38,12 @@ if (!globalThis.__seldbg_booted) {
       nextNode.setAttribute(key, `${value}`);
       return nextNode;
     }, node);
+  const OVERLAY_PADDING = 6;
   const toOverlayFrame = (box) => ({
-    x: box.left - 3,
-    y: box.top - 3,
-    width: box.width + 6,
-    height: box.height + 6
+    x: box.left - OVERLAY_PADDING,
+    y: box.top - OVERLAY_PADDING,
+    width: box.width + OVERLAY_PADDING * 2,
+    height: box.height + OVERLAY_PADDING * 2
   });
   const applyRectFrame = (node, frame) =>
     setAttrs(node, {
@@ -122,13 +123,37 @@ if (!globalThis.__seldbg_booted) {
     });
   };
   const evaluateFromInputEvent = (event) => evaluate(event.target.value);
-  const clearInputOnEscape = (event) => {
-    if (event.key !== "Escape") return;
-    const input = event.target;
-    if (!(input instanceof HTMLInputElement) || !input.value) return;
-    event.preventDefault();
+  const focusInputWithRetry = (input) => {
+    if (!(input instanceof HTMLInputElement)) return false;
+    const focusInput = () => {
+      globalThis.focus();
+      input.focus({ preventScroll: true });
+      input.select();
+    };
+    focusInput();
+    requestAnimationFrame(focusInput);
+    setTimeout(focusInput, 120);
+    return true;
+  };
+  const clearAndFocusInput = (input = state.input) => {
+    if (!(input instanceof HTMLInputElement)) return false;
     input.value = "";
     evaluate("");
+    focusInputWithRetry(input);
+    return true;
+  };
+  const clearInputOnEscape = (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    clearAndFocusInput(event.target);
+  };
+  const handleGlobalEscape = (event) => {
+    if (event.key !== "Escape") return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.target === state.input) return;
+    if (!clearAndFocusInput()) return;
+    event.preventDefault();
+    event.stopPropagation();
   };
   const stopInputEventPropagation = (event) => event.stopPropagation();
   const selectInputOnFocus = (event) => event.target.select();
@@ -136,6 +161,7 @@ if (!globalThis.__seldbg_booted) {
     if (input.dataset.seldbgInputReady === "1") return input;
     input.dataset.seldbgInputReady = "1";
     input.addEventListener("keydown", clearInputOnEscape);
+    input.addEventListener("keydown", copyInputAllOnAltC);
     input.addEventListener("focus", selectInputOnFocus);
     for (const eventName of inputStopEvents) {
       input.addEventListener(eventName, stopInputEventPropagation);
@@ -293,9 +319,16 @@ if (!globalThis.__seldbg_booted) {
       const fill = isActive
         ? "var(--sdbg-accent-soft, rgba(82, 209, 255, 0.2))"
         : "var(--sdbg-highlight-soft, rgba(255, 122, 69, 0.2))";
-      const strokeWidth = isActive ? "3" : "2";
+      const strokeWidth = isActive ? "5" : "3";
       applyRectFrame(highlight, toOverlayFrame(box));
-      setAttrs(highlight, { fill, stroke, "stroke-width": strokeWidth });
+      setAttrs(highlight, {
+        fill,
+        stroke,
+        "stroke-width": strokeWidth,
+        "stroke-linejoin": "round",
+        "stroke-linecap": "round",
+        ...(isActive ? {} : { "stroke-dasharray": "1" })
+      });
       return highlight;
     });
     const activeRectIndex = overlayRects.findIndex(({ index }) => index === activeIndex);
@@ -316,19 +349,24 @@ if (!globalThis.__seldbg_booted) {
     state.toastTimer = setTimeout(() => {
       toast.classList.remove(TOAST_SHOW_CLASS);
       state.toastTimer = 0;
-    }, 1200);
+    }, 993400);
   };
 
-  const copySelector = () => {
-    const selector = state.input?.value?.trim() || "";
-    if (!selector) {
-      showToast("Nothing to copy");
-      return;
-    }
+  const copyToClipboard = (text) => {
+    if (!text) return showToast("Nothing to copy");
     navigator.clipboard
-      .writeText(selector)
+      .writeText(text)
       .then(() => showToast("Selector copied"))
       .catch(() => showToast("Copy failed"));
+  };
+  const copySelector = () => copyToClipboard(state.input?.value?.trim() || "");
+  const copyInputAllOnAltC = (event) => {
+    if (!event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.code !== "KeyC") return;
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    event.preventDefault();
+    copyToClipboard(input.value);
   };
 
   const makeCopyButton = () => {
@@ -448,5 +486,6 @@ if (!globalThis.__seldbg_booted) {
     if (!handler) return;
     handler(message);
   });
+  document.addEventListener("keydown", handleGlobalEscape, true);
 }
 
