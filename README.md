@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="icons/icon128.png" width="96" height="96" alt="queryselector-debugger logo">
-  <h1>queryselector-debugger</h1>
+  <img src="icons/icon128.png" width="96" height="96" alt="css-selector-repl logo">
+  <h1>css-selector-repl</h1>
   <p><strong>Live REPL for CSS selectors.</strong></p>
 </div>
 
@@ -45,7 +45,7 @@ The input and panel survive DOM mutations and page interaction · refine until t
 
 | Action | Binding |
 |---|---|
-| Toggle debugger (input + Side Panel) | extension action / **Alt+S** |
+| Toggle REPL (input + Side Panel) | extension action / **Alt+S** |
 | Reload the extension | **Alt+R** |
 
 ## Limits
@@ -53,7 +53,7 @@ The input and panel survive DOM mutations and page interaction · refine until t
 - **150** matches listed in the Side Panel (additional matches are still highlighted).
 - Injection runs on `http(s)` and `file:` only; Chrome Web Store pages are blocked.
 - Closing the Side Panel does not close the in-page input.
-- Page reload / navigation fully deactivates the debugger.
+- Page reload / navigation fully deactivates the REPL.
 
 ## Permissions
 

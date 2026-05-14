@@ -1,12 +1,12 @@
-if (!globalThis.__seldbg_booted) {
-  globalThis.__seldbg_booted = true;
+if (!globalThis.__csrepl_booted) {
+  globalThis.__csrepl_booted = true;
 
-  const ROOT_ID = "__seldbg_root__";
-  const ROW_CLASS = "__seldbg_row__";
-  const COPY_BTN_CLASS = "__seldbg_copy_btn__";
-  const TOAST_CLASS = "__seldbg_toast__";
-  const TOAST_SHOW_CLASS = "__seldbg_toast_show__";
-  const MATCH_ATTR = "data-seldbg-match";
+  const ROOT_ID = "__csrepl_root__";
+  const ROW_CLASS = "__csrepl_row__";
+  const COPY_BTN_CLASS = "__csrepl_copy_btn__";
+  const TOAST_CLASS = "__csrepl_toast__";
+  const TOAST_SHOW_CLASS = "__csrepl_toast_show__";
+  const MATCH_ATTR = "data-csrepl-match";
   const MAX_MATCHES = 150;
   const MAX_HITS = 500;
 
@@ -83,8 +83,8 @@ if (!globalThis.__seldbg_booted) {
   const stopInputEventPropagation = (event) => event.stopPropagation();
   const selectInputOnFocus = (event) => event.target.select();
   const attachInputListeners = (input) => {
-    if (input.dataset.seldbgInputReady === "1") return input;
-    input.dataset.seldbgInputReady = "1";
+    if (input.dataset.csreplInputReady === "1") return input;
+    input.dataset.csreplInputReady = "1";
     input.addEventListener("keydown", clearInputOnEscape);
     input.addEventListener("keydown", copyInputAllOnAltC);
     input.addEventListener("focus", selectInputOnFocus);

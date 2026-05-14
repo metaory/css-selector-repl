@@ -1,19 +1,19 @@
 @import url("fonts.css");
 @import url("tokens.css");
 
-[data-seldbg-match] {
-  background: var(--sdbg-backdrop) !important;
-  outline: 3px solid var(--sdbg-highlight) !important;
+[data-csrepl-match] {
+  background: var(--csrepl-backdrop) !important;
+  outline: 3px solid var(--csrepl-highlight) !important;
   outline-offset: -2px !important;
   border-radius: 4px;
   filter: saturate(1);
 }
-[data-seldbg-match="active"] {
-  outline: 5px solid var(--sdbg-accent) !important;
+[data-csrepl-match="active"] {
+  outline: 5px solid var(--csrepl-accent) !important;
   filter: saturate(2);
 }
 
-#__seldbg_root__ {
+#__csrepl_root__ {
   position: sticky;
   left: 0;
   right: 0;
@@ -22,7 +22,7 @@
   padding: 12px 40px;
   isolation: isolate;
 
-  & .__seldbg_row__ {
+  & .__csrepl_row__ {
     display: flex;
     gap: 8px;
     align-items: center;
@@ -30,7 +30,7 @@
     outline: solid 4px white;
     border-radius: 18px;
     box-shadow: 0 0 16px 4px white, inset 0 0 22px white !important;
-    background: var(--sdbg-fade);
+    background: var(--csrepl-fade);
     backdrop-filter: brightness(0.9) blur(20px);
   }
 
@@ -43,24 +43,24 @@
     padding: 10px 16px 10px;
     font: 800 26px / 1 "Baloo 2", system-ui, sans-serif;
     background: transparent;
-    color: var(--sdbg-bg);
+    color: var(--csrepl-bg);
     direction: ltr;
     text-align: left;
-    caret-color: var(--sdbg-backdrop);
+    caret-color: var(--csrepl-backdrop);
     caret-shape: block;
 
     &::placeholder {
-      color: var(--sdbg-bg);
+      color: var(--csrepl-bg);
       opacity: 0.6;
       padding-left: 20px;
     }
     &::selection {
-      background: var(--sdbg-backdrop);
+      background: var(--csrepl-backdrop);
       color: white;
     }
   }
 
-  & .__seldbg_copy_btn__ {
+  & .__csrepl_copy_btn__ {
     margin-right: 12px;
     display: grid;
     place-items: center;
@@ -70,7 +70,7 @@
     opacity: .4;
     padding: 0;
     transition: all .4s ease;
-    background: var(--sdbg-fade);
+    background: var(--csrepl-fade);
 
     &:hover {
       opacity: .8;
@@ -89,7 +89,7 @@
     }
   }
 
-  & .__seldbg_toast__ {
+  & .__csrepl_toast__ {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 16px);
@@ -99,8 +99,8 @@
     text-align: center;
     font: 800 28px/1.12 "Baloo 2", system-ui, sans-serif;
     letter-spacing: 0.02em;
-    color: var(--sdbg-bg);
-    background: var(--sdbg-fade);
+    color: var(--csrepl-bg);
+    background: var(--csrepl-fade);
     backdrop-filter: brightness(0.9) blur(20px);
     outline: solid 4px white;
     box-shadow: 0 0 16px 4px white, inset 0 0 22px white;
@@ -113,7 +113,7 @@
     padding: 6px 12px;
     border-radius: 9px;
 
-    &.__seldbg_toast_show__ {
+    &.__csrepl_toast_show__ {
       opacity: 1;
       transform: translate(-50%, 0);
     }

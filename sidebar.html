@@ -6,23 +6,23 @@
     <meta name="color-scheme" content="light dark">
     <link rel="stylesheet" href="fonts.css">
     <link rel="stylesheet" href="tokens.css">
-    <title>queryselector-debugger</title>
+    <title>CSS Selector REPL</title>
     <style>
       :root { color-scheme: light dark; }
       body {
         margin: 0;
-        color: var(--sdbg-fg);
+        color: var(--csrepl-fg);
         font: 400 13px/1.3 "Baloo 2", system-ui, sans-serif;
-        background: var(--sdbg-bg, #ffffff);
+        background: var(--csrepl-bg, #ffffff);
       }
       #app { padding: 10px; }
       #meta, #error { margin: 0 0 10px; }
-      #meta { color: var(--sdbg-muted); word-break: break-word; }
-      #error { color: var(--sdbg-error); display: none; }
+      #meta { color: var(--csrepl-muted); word-break: break-word; }
+      #error { color: var(--csrepl-error); display: none; }
       #list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-      #list li { border: 2px solid var(--sdbg-highlight); border-radius: 12px; padding: 8px; background: var(--sdbg-soft); color: var(--sdbg-fg); cursor: pointer; font-size: 16px; line-height: 1.35; font-weight: 600; word-break: break-word; transition: font-size 120ms ease, font-weight 120ms ease, border-color 120ms ease, color 120ms ease; }
-      #list li:hover { font-size: 18px; font-weight: 700; color: var(--sdbg-accent); }
-      #list li:hover, #list li.is-active { border-color: var(--sdbg-accent); }
+      #list li { border: 2px solid var(--csrepl-highlight); border-radius: 12px; padding: 8px; background: var(--csrepl-soft); color: var(--csrepl-fg); cursor: pointer; font-size: 16px; line-height: 1.35; font-weight: 600; word-break: break-word; transition: font-size 120ms ease, font-weight 120ms ease, border-color 120ms ease, color 120ms ease; }
+      #list li:hover { font-size: 18px; font-weight: 700; color: var(--csrepl-accent); }
+      #list li:hover, #list li.is-active { border-color: var(--csrepl-accent); }
       #list li.is-active { border-style: solid; font-size: 20px; font-weight: 800; }
       #list li .entry-text-full { display: none; }
       #list li:hover .entry-text-preview { display: none; }
