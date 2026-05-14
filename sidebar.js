@@ -89,11 +89,17 @@ const clearHoveredIndex = () => {
   sendRuntime({ type: "selector:hover-clear", tabId: state.tabId });
 };
 
+const markActiveRow = (index) => {
+  for (const row of listNode.querySelectorAll("li[data-index]")) {
+    row.classList.toggle("is-active", Number(row.dataset.index) === index);
+  }
+};
+
 const focusItem = (index) => {
   if (!Number.isInteger(index) || !state.tabId) return;
   state.selectedIndex = index;
   sendRuntime({ type: "selector:focus", tabId: state.tabId, index });
-  render(state.payload);
+  markActiveRow(index);
 };
 
 const getRowFromTarget = (target) =>

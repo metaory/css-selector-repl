@@ -4,7 +4,7 @@
   <p><strong>Live REPL for CSS selectors.</strong></p>
 </div>
 
-Write a selector, see every match highlighted on the page in real time — and iterate without losing your work.
+Write a selector, see every match highlighted on the page in real time · and iterate without losing your work.
 
 ## Why
 
@@ -20,9 +20,9 @@ Crafting a precise selector against a real DOM is iterative, but the built-in to
 
 ### Core problems
 
-- **Auto-generated IDs** — modern frameworks emit unstable `id` attributes; copied selectors break on the next mount.
-- **Long, brittle paths** — generated selectors describe the *path* to an element, not its *identity*. A short, intentional query is almost always better.
-- **No live feedback loop** — every existing flow is single-shot; refining a query means starting over.
+- **Auto-generated IDs** · modern frameworks emit unstable `id` attributes; copied selectors break on the next mount.
+- **Long, brittle paths** · generated selectors describe the *path* to an element, not its *identity*. A short, intentional query is almost always better.
+- **No live feedback loop** · every existing flow is single-shot; refining a query means starting over.
 
 ## What it does
 
@@ -33,7 +33,7 @@ A persistent input docked at the bottom of the page. As you type:
 - Clicking a match scrolls to and focuses the element.
 - Invalid selectors surface inline without disrupting state.
 
-The input and panel survive DOM mutations and page interaction — refine until the query is exactly what you want.
+The input and panel survive DOM mutations and page interaction · refine until the query is exactly what you want.
 
 ## Install (unpacked)
 
@@ -57,10 +57,10 @@ The input and panel survive DOM mutations and page interaction — refine until 
 
 ## Permissions
 
-- `activeTab` — operate on the active tab.
-- `scripting` — inject `content.js` on demand.
-- `sidePanel` — Side Panel UI.
-- `host_permissions: <all_urls>` — run on any site.
+- `activeTab` · operate on the active tab.
+- `scripting` · inject `content.js` on demand.
+- `sidePanel` · Side Panel UI.
+- `host_permissions: <all_urls>` · run on any site.
 
 ## License
 

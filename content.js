@@ -2,15 +2,12 @@ if (!globalThis.__seldbg_booted) {
   globalThis.__seldbg_booted = true;
 
   const ROOT_ID = "__seldbg_root__";
-  const BACKDROP_ID = "__seldbg_backdrop__";
-  const BACKDROP_SHADE_ROLE = "__seldbg_backdrop_shade__";
-  const BACKDROP_BOXES_ROLE = "__seldbg_backdrop_boxes__";
   const ROW_CLASS = "__seldbg_row__";
   const COPY_BTN_CLASS = "__seldbg_copy_btn__";
   const TOAST_CLASS = "__seldbg_toast__";
   const TOAST_SHOW_CLASS = "__seldbg_toast_show__";
+  const MATCH_ATTR = "data-seldbg-match";
   const MAX_MATCHES = 150;
-  const MAX_OVERLAY_RENDER = 200;
   const MAX_HITS = 500;
 
   const state = {
@@ -18,103 +15,31 @@ if (!globalThis.__seldbg_booted) {
     hits: [],
     selectedIndex: null,
     hoveredIndex: null,
-    toastTimer: 0,
-    backdropRaf: 0,
-    backdropTrackingReady: false,
-    selectedNode: null,
-    selectedNodeResizeObserver: null
+    toastTimer: 0
   };
 
   const emptyPayload = { selector: "", count: 0, matches: [], error: "" };
   const inputStopEvents = ["keydown", "keyup", "keypress"];
-  const SVG_NS = "http://www.w3.org/2000/svg";
 
   const runtime = globalThis.chrome?.runtime || globalThis.browser?.runtime;
   const $ = document.querySelector.bind(document);
   const $id = document.getElementById.bind(document);
   const el = (tag) => document.createElement(tag);
-  const svgEl = (tag) => document.createElementNS(SVG_NS, tag);
-  const setAttrs = (node, attrs) =>
-    Object.entries(attrs).reduce((nextNode, [key, value]) => {
-      nextNode.setAttribute(key, `${value}`);
-      return nextNode;
-    }, node);
-  const OVERLAY_PADDING = 6;
-  const toOverlayFrame = (box) => ({
-    x: box.left - OVERLAY_PADDING,
-    y: box.top - OVERLAY_PADDING,
-    width: box.width + OVERLAY_PADDING * 2,
-    height: box.height + OVERLAY_PADDING * 2
-  });
-  const applyRectFrame = (node, frame) =>
-    setAttrs(node, {
-      x: frame.x,
-      y: frame.y,
-      width: frame.width,
-      height: frame.height,
-      rx: 4,
-      ry: 4
-    });
-  const getOverlayNodes = () => {
-    const backdrop = $id(BACKDROP_ID);
-    if (!(backdrop instanceof HTMLElement)) return null;
-    const shade = backdrop.querySelector(`[data-role="${BACKDROP_SHADE_ROLE}"]`);
-    const boxes = backdrop.querySelector(`[data-role="${BACKDROP_BOXES_ROLE}"]`);
-    if (!(shade instanceof SVGPathElement) || !(boxes instanceof SVGGElement)) return null;
-    return { backdrop, shade, boxes };
-  };
   const getActiveIndex = () =>
     Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= 0
       ? state.hoveredIndex
       : state.selectedIndex;
 
-  const scheduleBackdropUpdate = () => {
-    if (state.backdropRaf) return;
-    state.backdropRaf = requestAnimationFrame(() => {
-      state.backdropRaf = 0;
-      renderOverlay();
+  const markHits = () => {
+    const active = getActiveIndex();
+    state.hits.forEach((node, i) => {
+      if (!(node instanceof Element)) return;
+      node.setAttribute(MATCH_ATTR, i === active ? "active" : "");
     });
   };
 
-  const ensureBackdropTracking = () => {
-    if (state.backdropTrackingReady) return;
-    state.backdropTrackingReady = true;
-    document.addEventListener("scroll", scheduleBackdropUpdate, { capture: true, passive: true });
-    globalThis.addEventListener("resize", scheduleBackdropUpdate, { passive: true });
-    const viewport = globalThis.visualViewport;
-    if (!viewport) return;
-    viewport.addEventListener("scroll", scheduleBackdropUpdate, { passive: true });
-    viewport.addEventListener("resize", scheduleBackdropUpdate, { passive: true });
-  };
-
-  const removeBackdropTracking = () => {
-    if (!state.backdropTrackingReady) return;
-    state.backdropTrackingReady = false;
-    document.removeEventListener("scroll", scheduleBackdropUpdate, true);
-    globalThis.removeEventListener("resize", scheduleBackdropUpdate);
-    const viewport = globalThis.visualViewport;
-    if (!viewport) return;
-    viewport.removeEventListener("scroll", scheduleBackdropUpdate);
-    viewport.removeEventListener("resize", scheduleBackdropUpdate);
-  };
-
-  const disconnectSelectedNodeObserver = () => {
-    if (!state.selectedNodeResizeObserver) return;
-    state.selectedNodeResizeObserver.disconnect();
-    state.selectedNodeResizeObserver = null;
-    state.selectedNode = null;
-  };
-
-  const syncSelectedNodeObserver = () => {
-    const activeIndex = getActiveIndex();
-    const activeNode = Number.isInteger(activeIndex) ? state.hits[activeIndex] : null;
-    if (state.selectedNode === activeNode) return;
-    disconnectSelectedNodeObserver();
-    if (!(activeNode instanceof Element) || !globalThis.ResizeObserver) return;
-    state.selectedNode = activeNode;
-    const observer = new ResizeObserver(scheduleBackdropUpdate);
-    observer.observe(activeNode);
-    state.selectedNodeResizeObserver = observer;
+  const unmarkHits = () => {
+    for (const node of state.hits) node?.removeAttribute?.(MATCH_ATTR);
   };
 
   const sendUpdate = (payload) => {
@@ -172,26 +97,10 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const clearHits = () => {
+    unmarkHits();
     state.hits = [];
     state.selectedIndex = null;
     state.hoveredIndex = null;
-    disconnectSelectedNodeObserver();
-    if (state.backdropRaf) {
-      cancelAnimationFrame(state.backdropRaf);
-      state.backdropRaf = 0;
-    }
-    const overlay = getOverlayNodes();
-    if (!overlay) return;
-    const { backdrop, shade, boxes } = overlay;
-    backdrop.setAttribute("hidden", "");
-    shade.setAttribute("d", "");
-    boxes.replaceChildren();
-  };
-
-  const destroyOverlay = () => {
-    clearHits();
-    removeBackdropTracking();
-    $id(BACKDROP_ID)?.remove();
   };
 
   const compactText = (text) => text.replace(/\s+/g, " ").trim().slice(0, 80);
@@ -207,9 +116,7 @@ if (!globalThis.__seldbg_booted) {
   });
 
   const isDebuggerNode = (node) =>
-    node.id === ROOT_ID ||
-    node.id === BACKDROP_ID ||
-    node.closest?.(`#${ROOT_ID}`);
+    node.id === ROOT_ID || node.closest?.(`#${ROOT_ID}`);
 
   const selectNodes = (selector) => {
     try {
@@ -234,8 +141,7 @@ if (!globalThis.__seldbg_booted) {
       return;
     }
     state.hits = matches.slice(0, MAX_HITS);
-    syncSelectedNodeObserver();
-    renderOverlay();
+    markHits();
     state.hits[0]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
     sendUpdate({
       selector,
@@ -255,8 +161,8 @@ if (!globalThis.__seldbg_booted) {
     if (state.input) state.input.value = "";
     sendUpdate(emptyPayload);
     if (state.toastTimer) clearTimeout(state.toastTimer);
+    unmarkHits();
     $id(ROOT_ID)?.remove();
-    destroyOverlay();
     state.input = null;
     state.toastTimer = 0;
   };
@@ -266,74 +172,8 @@ if (!globalThis.__seldbg_booted) {
     const node = state.hits[index];
     if (!node) return;
     state.selectedIndex = index;
-    syncSelectedNodeObserver();
+    markHits();
     node.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-    renderOverlay();
-    scheduleBackdropUpdate();
-  };
-
-  const renderOverlay = () => {
-    const overlay = getOverlayNodes();
-    if (!overlay) return;
-    const { backdrop, shade, boxes } = overlay;
-    if (!state.hits.length) {
-      shade.setAttribute("d", "");
-      boxes.replaceChildren();
-      backdrop.setAttribute("hidden", "");
-      return;
-    }
-    const viewport = globalThis.visualViewport;
-    const viewportWidth = viewport?.width || globalThis.innerWidth;
-    const viewportHeight = viewport?.height || globalThis.innerHeight;
-    const isBoxVisible = (box) =>
-      box.width > 0 &&
-      box.height > 0 &&
-      box.bottom >= 0 &&
-      box.right >= 0 &&
-      box.top <= viewportHeight &&
-      box.left <= viewportWidth;
-    const overlayRects = state.hits
-      .map((node, index) => ({ index, box: node.getBoundingClientRect() }))
-      .filter(({ box }) => isBoxVisible(box))
-      .slice(0, MAX_OVERLAY_RENDER);
-    if (!overlayRects.length) {
-      shade.setAttribute("d", "");
-      boxes.replaceChildren();
-      backdrop.setAttribute("hidden", "");
-      return;
-    }
-    backdrop.removeAttribute("hidden");
-    const toHolePath = (frame) =>
-      `M${frame.x} ${frame.y}h${frame.width}v${frame.height}h-${frame.width}Z`;
-    const activeIndex = getActiveIndex();
-    const shadePath = `M0 0H${viewportWidth}V${viewportHeight}H0Z ${overlayRects
-      .map(({ box }) => toHolePath(toOverlayFrame(box)))
-      .join(" ")}`;
-    shade.setAttribute("d", shadePath);
-    const boxRects = overlayRects.map(({ index, box }) => {
-      const highlight = svgEl("rect");
-      const isActive = index === activeIndex;
-      const stroke = isActive ? "var(--sdbg-accent)" : "var(--sdbg-highlight)";
-      const fill = isActive ? "var(--sdbg-accent-soft)" : "var(--sdbg-highlight-soft)";
-      const strokeWidth = isActive ? "5" : "3";
-      applyRectFrame(highlight, toOverlayFrame(box));
-      setAttrs(highlight, {
-        fill,
-        stroke,
-        "stroke-width": strokeWidth,
-        "stroke-linejoin": "round",
-        "stroke-linecap": "round",
-        ...(isActive ? {} : { "stroke-dasharray": "1" })
-      });
-      return highlight;
-    });
-    const activeRectIndex = overlayRects.findIndex(({ index }) => index === activeIndex);
-    if (activeRectIndex >= 0) {
-      const activeRect = boxRects.splice(activeRectIndex, 1);
-      boxes.replaceChildren(...boxRects, ...activeRect);
-      return;
-    }
-    boxes.replaceChildren(...boxRects);
   };
 
   const showToast = (message) => {
@@ -384,28 +224,6 @@ if (!globalThis.__seldbg_booted) {
 
   const mount = () => {
     if (state.input) return state.input;
-    ensureBackdropTracking();
-    if (!$id(BACKDROP_ID)) {
-      const backdrop = el("div");
-      const svg = svgEl("svg");
-      const shade = svgEl("path");
-      const boxes = svgEl("g");
-      backdrop.id = BACKDROP_ID;
-      setAttrs(backdrop, { hidden: "" });
-      setAttrs(shade, {
-        "data-role": BACKDROP_SHADE_ROLE,
-        fill: "var(--sdbg-backdrop, rgba(8, 3, 24, 0.34))",
-        "fill-rule": "evenodd",
-        d: ""
-      });
-      setAttrs(boxes, {
-        "data-role": BACKDROP_BOXES_ROLE,
-        fill: "var(--sdbg-accent-soft, rgba(82, 209, 255, 0.2))"
-      });
-      svg.append(shade, boxes);
-      backdrop.append(svg);
-      (document.body || document.documentElement).append(backdrop);
-    }
     const existing = $id(ROOT_ID);
     if (existing) {
       state.input = existing.querySelector("input");
@@ -455,16 +273,12 @@ if (!globalThis.__seldbg_booted) {
     "selector:hover": (message) => {
       if (!Number.isInteger(message.index) || !state.hits[message.index]) return;
       state.hoveredIndex = message.index;
-      syncSelectedNodeObserver();
-      renderOverlay();
-      scheduleBackdropUpdate();
+      markHits();
     },
     "selector:hover-clear": () => {
       if (state.hoveredIndex === null) return;
       state.hoveredIndex = null;
-      syncSelectedNodeObserver();
-      renderOverlay();
-      scheduleBackdropUpdate();
+      markHits();
     }
   };
 
