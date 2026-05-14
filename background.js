@@ -41,11 +41,6 @@ const getTabUrl = (tabId) =>
         .catch(() => undefined)
     : Promise.resolve(undefined);
 
-const onInjectableTab = (tabId, urlHint, effect) =>
-  (typeof urlHint === "string" ? Promise.resolve(urlHint) : getTabUrl(tabId)).then((url) =>
-    isInjectableUrl(url) ? effect(url) : undefined
-  );
-
 const sendTabMessage = (tabId, message) =>
   isTabId(tabId)
     ? new Promise((resolve) =>
@@ -54,14 +49,12 @@ const sendTabMessage = (tabId, message) =>
     : Promise.resolve(false);
 
 const injectContentScript = (tabId) =>
-  onInjectableTab(tabId, undefined, () =>
-    chrome.scripting
-      .executeScript({
-        target: { tabId },
-        world: "ISOLATED",
-        files: ["content.js"]
-      })
-      .catch(() => undefined)
+  getTabUrl(tabId).then((url) =>
+    isInjectableUrl(url)
+      ? chrome.scripting
+          .executeScript({ target: { tabId }, world: "ISOLATED", files: ["content.js"] })
+          .catch(() => undefined)
+      : undefined
   );
 
 const ensureContentScript = (tabId) =>
@@ -153,9 +146,7 @@ const commandHandlers = {
 };
 
 chrome.commands.onCommand.addListener((command) => {
-  const handler = commandHandlers[command];
-  if (!handler) return;
-  handler();
+  commandHandlers[command]?.();
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -169,6 +160,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   deactivateDebugger(tabId);
 });
 
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  if (!isTabId(tabId)) return;
+  for (const [otherId, state] of tabState) {
+    if (otherId === tabId || !state.active) continue;
+    deactivateDebugger(otherId);
+  }
+});
+
 if (chrome.sidePanel?.onOpened) {
   chrome.sidePanel.onOpened.addListener((panel) => {
     if (!isTabId(panel?.tabId)) return;
@@ -177,52 +176,30 @@ if (chrome.sidePanel?.onOpened) {
   });
 }
 
+const forwardToTab = (message) =>
+  ensureContentScript(message.tabId).then(() => sendTabMessage(message.tabId, message));
+
 const messageHandlers = {
   "selector:update": (message, sender) => {
     const tabId = sender?.tab?.id;
     if (!isTabId(tabId)) return;
-    setTabPayload(tabId, { ...emptyPayload, ...message.payload });
+    setTabPayload(tabId, message.payload);
   },
   "debugger:ensure-open": (message) => {
     if (!isTabId(message.tabId)) return;
     setTabActive(message.tabId, true);
     ensureDebuggerInput(message.tabId);
   },
-  "debugger:close": (message) => {
-    deactivateDebugger(message.tabId);
-  },
-  "selector:focus": (message) => {
-    if (!isTabId(message.tabId) || !Number.isInteger(message.index)) return;
-    ensureContentScript(message.tabId).then(() =>
-      sendTabMessage(message.tabId, { type: "selector:focus", index: message.index })
-    );
-  },
-  "selector:hover": (message) => {
-    if (!isTabId(message.tabId) || !Number.isInteger(message.index)) return;
-    ensureContentScript(message.tabId).then(() =>
-      sendTabMessage(message.tabId, { type: "selector:hover", index: message.index })
-    );
-  },
-  "selector:hover-clear": (message) => {
-    if (!isTabId(message.tabId)) return;
-    ensureContentScript(message.tabId).then(() =>
-      sendTabMessage(message.tabId, { type: "selector:hover-clear" })
-    );
-  },
-  "debugger:reset": (message) => {
-    if (!isTabId(message.tabId)) return;
-    ensureContentScript(message.tabId).then(() =>
-      sendTabMessage(message.tabId, { type: "debugger:reset" })
-    );
-  },
+  "selector:focus": forwardToTab,
+  "selector:hover": forwardToTab,
+  "selector:hover-clear": forwardToTab,
+  "debugger:reset": forwardToTab,
   "sidebar:init": (message, _sender, sendResponse) => {
-    sendResponse(getTabState(message.tabId).payload || emptyPayload);
+    sendResponse(getTabState(message.tabId).payload);
   }
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  const handler = messageHandlers[message?.type];
-  if (!handler) return;
-  handler(message, sender, sendResponse);
+  messageHandlers[message?.type]?.(message, sender, sendResponse);
 });
 

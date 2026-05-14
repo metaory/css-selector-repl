@@ -1,7 +1,7 @@
 :root {
   --sdbg-bg: #220044;
   --sdbg-fg: rgba(255, 255, 255, 0.92);
-  --sdbg-fade: rgba(240, 230, 250, 0.4);
+  --sdbg-fade: rgba(240, 230, 250, 0.5);
   --sdbg-accent: #52d1ff;
   --sdbg-accent-soft: rgba(82, 209, 255, 0.2);
   --sdbg-main: rgb(255 204 0 / 60%);

@@ -313,12 +313,8 @@ if (!globalThis.__seldbg_booted) {
     const boxRects = overlayRects.map(({ index, box }) => {
       const highlight = svgEl("rect");
       const isActive = index === activeIndex;
-      const stroke = isActive
-        ? "var(--sdbg-accent, rgba(82, 209, 255, 1))"
-        : "var(--sdbg-highlight, rgba(255, 122, 69, 1))";
-      const fill = isActive
-        ? "var(--sdbg-accent-soft, rgba(82, 209, 255, 0.2))"
-        : "var(--sdbg-highlight-soft, rgba(255, 122, 69, 0.2))";
+      const stroke = isActive ? "var(--sdbg-accent)" : "var(--sdbg-highlight)";
+      const fill = isActive ? "var(--sdbg-accent-soft)" : "var(--sdbg-highlight-soft)";
       const strokeWidth = isActive ? "5" : "3";
       applyRectFrame(highlight, toOverlayFrame(box));
       setAttrs(highlight, {

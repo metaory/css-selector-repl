@@ -55,7 +55,7 @@
     color: var(--sdbg-bg);
     direction: ltr;
     text-align: left;
-    caret-color: var(--sdbg-main);
+    caret-color: var(--sdbg-backdrop);
     caret-shape: block;
 
     &::placeholder {
@@ -64,8 +64,8 @@
       padding-left: 20px;
     }
     &::selection {
-      background: var(--sdbg-main);
-      color: black;
+      background: var(--sdbg-backdrop);
+      color: white;
     }
   }
 
@@ -76,20 +76,18 @@
     border: 0;
     border-radius: 10px;
     cursor: pointer;
-    opacity: .8;
+    opacity: .4;
     padding: 0;
-    transition: all 120ms ease;
+    transition: all .4s ease;
+    background: var(--sdbg-fade);
 
     &:hover {
-      opacity: 1;
-      background: var(--sdbg-soft-strong);
+      opacity: .8;
       transform: translateY(-2px);
-      filter: sepia(1) saturate(4);
     }
 
     &:focus-visible {
-      outline: 2px solid var(--sdbg-accent);
-      outline-offset: 1px;
+      outline: none;
     }
 
     & img {
