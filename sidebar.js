@@ -46,7 +46,7 @@ const render = (payload) => {
   const next = { ...defaultPayload, ...(payload || {}) };
   const selectorChanged = next.selector !== state.payload.selector;
   if (selectorChanged) clearHoveredIndex();
-  const selectedIndex = next.selector !== state.payload.selector ? null : state.selectedIndex;
+  const selectedIndex = selectorChanged ? null : state.selectedIndex;
   state.selectedIndex = selectedIndex !== null && selectedIndex < next.matches.length ? selectedIndex : null;
   state.payload = next;
   const { selector, count, matches, error } = next;

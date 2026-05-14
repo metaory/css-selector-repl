@@ -181,7 +181,7 @@ const messageHandlers = {
   "selector:update": (message, sender) => {
     const tabId = sender?.tab?.id;
     if (!isTabId(tabId)) return;
-    setTabPayload(tabId, { ...emptyPayload, ...message.payload, tabId });
+    setTabPayload(tabId, { ...emptyPayload, ...message.payload });
   },
   "debugger:ensure-open": (message) => {
     if (!isTabId(message.tabId)) return;

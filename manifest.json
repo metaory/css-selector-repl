@@ -40,6 +40,8 @@
         "<all_urls>"
       ],
       "css": [
+        "fonts.css",
+        "tokens.css",
         "content.css"
       ],
       "js": [
@@ -51,7 +53,9 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "assets/*"
+        "assets/*",
+        "tokens.css",
+        "fonts.css"
       ],
       "matches": [
         "<all_urls>"

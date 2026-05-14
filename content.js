@@ -385,7 +385,7 @@ if (!globalThis.__seldbg_booted) {
   };
 
   const makeToast = () => {
-    return Object.assign(el("div"), { className: TOAST_CLASS, textContent: "Selector copied" });
+    return Object.assign(el("div"), { className: TOAST_CLASS });
   };
 
   const mount = () => {
