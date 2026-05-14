@@ -20,13 +20,15 @@
       #meta { color: var(--csrepl-muted); word-break: break-word; }
       #error { color: var(--csrepl-error); display: none; }
       #list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-      #list li { border: 2px solid var(--csrepl-highlight); border-radius: 12px; padding: 8px; background: var(--csrepl-soft); color: var(--csrepl-fg); cursor: pointer; font-size: 16px; line-height: 1.35; font-weight: 600; word-break: break-word; transition: font-size 120ms ease, font-weight 120ms ease, border-color 120ms ease, color 120ms ease; }
-      #list li:hover { font-size: 18px; font-weight: 700; color: var(--csrepl-accent); }
-      #list li:hover, #list li.is-active { border-color: var(--csrepl-accent); }
-      #list li.is-active { border-style: solid; font-size: 20px; font-weight: 800; }
-      #list li .entry-text-full { display: none; }
-      #list li:hover .entry-text-preview { display: none; }
-      #list li:hover .entry-text-full { display: inline; }
+      #list li { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; border: 2px solid transparent; border-radius: 12px; padding: 6px 8px; background: var(--csrepl-soft); cursor: pointer; transition: border-color 120ms ease, background 120ms ease; }
+      #list li:hover { border-color: var(--csrepl-accent); background: var(--csrepl-soft-strong); }
+      #list li.is-active { border-color: var(--csrepl-accent); background: var(--csrepl-accent-soft); }
+      #list .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.45; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+      #list .pill.tag  { background: hsl(var(--hue) 55% 45% / 0.35); color: hsl(var(--hue) 90% 80%); font-weight: 800; }
+      #list .pill.id   { background: var(--csrepl-accent-soft); color: var(--csrepl-accent); font-weight: 700; }
+      #list .pill.cls  { background: hsl(var(--hue) 65% 45% / 0.25); color: hsl(var(--hue) 80% 78%); }
+      #list .pill.attr { background: hsl(var(--hue) 40% 40% / 0.18); color: hsl(var(--hue) 55% 80%); font-style: italic; border: 1px solid hsl(var(--hue) 50% 50% / 0.35); }
+      #list .pill.text { background: transparent; color: var(--csrepl-fg); font-style: italic; font-weight: 500; opacity: 0.85; flex: 1 1 auto; min-width: 0; }
     </style>
   </head>
   <body>

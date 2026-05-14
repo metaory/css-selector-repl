@@ -21,26 +21,27 @@ const state = {
   payload: defaultPayload
 };
 
-const fmtAttr = ([k, v]) =>
-  v ? `[${k}="${v.length > 40 ? `${v.slice(0, 40)}…` : v}"]` : `[${k}]`;
+const truncate = (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s);
+const fmtAttr = ([k, v]) => (v ? `${k}="${truncate(v, 40)}"` : k);
 
 const normalizeText = (text = "") => `${text}`.trim().replace(/\s+/g, " ");
-const firstTextToken = (text = "") => text.match(/^\S+/)?.[0] || "";
 
-const toLabelParts = (item) => {
-  const selector = [
-    item.tag,
-    item.id && `#${item.id}`,
-    item.classes?.length && `.${item.classes.join(".")}`,
-    item.attrs?.length && item.attrs.map(fmtAttr).join("")
-  ]
-    .filter(Boolean)
-    .join("");
-  const fullText = normalizeText(item.text);
-  const firstWord = firstTextToken(fullText);
-  const previewText = firstWord ? `${firstWord}${fullText.length > firstWord.length ? "…" : ""}` : "";
-  return { selector, previewText, fullText };
+const hueOf = (s) =>
+  ((([...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0)) % 360) + 360) % 360;
+
+const hueFor = {
+  tag: (v) => hueOf(v),
+  cls: (v) => hueOf(v.slice(1)),
+  attr: (v) => hueOf(v.split("=")[0])
 };
+
+const toLabelParts = (item) => ({
+  tag: item.tag,
+  id: item.id ? `#${item.id}` : "",
+  classes: (item.classes || []).map((c) => `.${c}`),
+  attrs: (item.attrs || []).map(fmtAttr),
+  text: truncate(normalizeText(item.text), 60)
+});
 
 const render = (payload) => {
   const next = { ...defaultPayload, ...(payload || {}) };
@@ -54,20 +55,20 @@ const render = (payload) => {
   errorNode.textContent = error;
   errorNode.style.display = error ? "block" : "none";
   const toRow = (item, index) => {
-    const { selector, previewText, fullText } = toLabelParts(item);
+    const { tag, id, classes, attrs, text } = toLabelParts(item);
+    const pills = [
+      ["tag", tag],
+      ["id", id],
+      ...classes.map((c) => ["cls", c]),
+      ...attrs.map((a) => ["attr", a]),
+      ["text", text && `"${text}"`]
+    ].filter(([, value]) => value);
     const row = el("li");
-    const selectorNode = Object.assign(el("span"), { className: "entry-selector", textContent: selector });
-    row.append(selectorNode);
-    if (previewText) {
-      const previewNode = Object.assign(el("span"), {
-        className: "entry-text-preview",
-        textContent: ` "${previewText}"`
-      });
-      const fullNode = Object.assign(el("span"), {
-        className: "entry-text-full",
-        textContent: ` "${fullText}"`
-      });
-      row.append(previewNode, fullNode);
+    for (const [kind, value] of pills) {
+      const span = Object.assign(el("span"), { className: `pill ${kind}`, textContent: value });
+      const hue = hueFor[kind]?.(value);
+      if (hue != null) span.style.setProperty("--hue", hue);
+      row.append(span);
     }
     row.dataset.index = `${index}`;
     if (index === state.selectedIndex) row.classList.add("is-active");
