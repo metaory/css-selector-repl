@@ -52,7 +52,6 @@ if (!globalThis.__seldbg_booted) {
   const focusInputWithRetry = (input) => {
     if (!(input instanceof HTMLInputElement)) return false;
     const focusInput = () => {
-      globalThis.focus();
       input.focus({ preventScroll: true });
       input.select();
     };
@@ -149,12 +148,6 @@ if (!globalThis.__seldbg_booted) {
       matches: matches.slice(0, MAX_MATCHES).map(toItem),
       error: ""
     });
-  };
-
-  const reset = () => {
-    if (state.input) state.input.value = "";
-    clearHits();
-    sendUpdate(emptyPayload);
   };
 
   const close = () => {
@@ -267,7 +260,7 @@ if (!globalThis.__seldbg_booted) {
 
   const messageHandlers = {
     "debugger:open": () => open(),
-    "debugger:reset": () => reset(),
+    "debugger:reset": () => clearAndFocusInput(),
     "debugger:close": () => close(),
     "selector:focus": (message) => focusByIndex(message.index),
     "selector:hover": (message) => {
