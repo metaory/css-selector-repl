@@ -178,7 +178,7 @@ if (!globalThis.__csrepl_booted) {
     state.toastTimer = setTimeout(() => {
       toast.classList.remove(TOAST_SHOW_CLASS);
       state.toastTimer = 0;
-    }, 993400);
+    }, 3_000);
   };
 
   const copyToClipboard = (text) => {

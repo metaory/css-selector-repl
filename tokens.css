@@ -9,7 +9,7 @@
   --csrepl-soft-strong: rgba(255, 255, 255, 0.16);
   --csrepl-highlight: #ff7a45;
   --csrepl-highlight-soft: rgba(255, 122, 69, 0.2);
-  --csrepl-backdrop: rgba(8, 3, 24, 0.34);
+  --csrepl-backdrop: rgba(8, 3, 24, 0.3);
   --csrepl-muted: rgba(255, 255, 255, 0.7);
   --csrepl-error: #ff8a80;
 }
