@@ -1,19 +1,15 @@
 :root {
   --sdbg-bg: #220044;
   --sdbg-fg: rgba(255, 255, 255, 0.92);
+  --sdbg-fade: rgba(240, 230, 250, 0.4);
   --sdbg-accent: #52d1ff;
   --sdbg-accent-soft: rgba(82, 209, 255, 0.2);
-  /* --sdbg-main: rgba(220, 60, 110, 0.6); */
   --sdbg-main: rgb(255 204 0 / 60%);
   --sdbg-soft: rgba(255, 255, 255, 0.08);
   --sdbg-soft-strong: rgba(255, 255, 255, 0.16);
   --sdbg-highlight: #ff7a45;
   --sdbg-highlight-soft: rgba(255, 122, 69, 0.2);
   --sdbg-backdrop: rgba(8, 3, 24, 0.34);
-  --sdbg-surface: var(--sdbg-soft);
-  --sdbg-text: var(--sdbg-fg);
   --sdbg-muted: rgba(255, 255, 255, 0.7);
   --sdbg-error: #ff8a80;
-  --sdbg-match: var(--sdbg-highlight);
-  --sdbg-active: var(--sdbg-accent);
 }

@@ -11,6 +11,7 @@ if (!globalThis.__seldbg_booted) {
   const TOAST_SHOW_CLASS = "__seldbg_toast_show__";
   const MAX_MATCHES = 150;
   const MAX_OVERLAY_RENDER = 200;
+  const MAX_HITS = 500;
 
   const state = {
     input: null,
@@ -232,11 +233,10 @@ if (!globalThis.__seldbg_booted) {
       sendUpdate({ selector, count: 0, matches: [], error });
       return;
     }
-    state.hits = matches;
+    state.hits = matches.slice(0, MAX_HITS);
     syncSelectedNodeObserver();
     renderOverlay();
-    const [first] = matches;
-    first?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    state.hits[0]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
     sendUpdate({
       selector,
       count: matches.length,
@@ -384,9 +384,7 @@ if (!globalThis.__seldbg_booted) {
     return button;
   };
 
-  const makeToast = () => {
-    return Object.assign(el("div"), { className: TOAST_CLASS });
-  };
+  const makeToast = () => Object.assign(el("div"), { className: TOAST_CLASS });
 
   const mount = () => {
     if (state.input) return state.input;
@@ -406,7 +404,7 @@ if (!globalThis.__seldbg_booted) {
       });
       setAttrs(boxes, {
         "data-role": BACKDROP_BOXES_ROLE,
-        fill: "rgba(82, 209, 255, 0.16)"
+        fill: "var(--sdbg-accent-soft, rgba(82, 209, 255, 0.2))"
       });
       svg.append(shade, boxes);
       backdrop.append(svg);
@@ -449,13 +447,7 @@ if (!globalThis.__seldbg_booted) {
 
   const open = () => {
     const input = mount();
-    const focusInput = () => {
-      input.focus({ preventScroll: true });
-      input.select();
-    };
-    focusInput();
-    requestAnimationFrame(focusInput);
-    setTimeout(focusInput, 120);
+    focusInputWithRetry(input);
     evaluate(input.value);
   };
 
@@ -481,7 +473,6 @@ if (!globalThis.__seldbg_booted) {
   };
 
   chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === "debugger:ping") return;
     const handler = messageHandlers[message?.type];
     if (!handler) return;
     handler(message);
