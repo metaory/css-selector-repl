@@ -136,17 +136,17 @@ if (!globalThis.__seldbg_booted) {
     }
     const { matches, error } = selectNodes(selector);
     if (error) {
-      sendUpdate({ selector, count: 0, matches: [], error });
+      sendUpdate({ ...emptyPayload, selector, error });
       return;
     }
     state.hits = matches.slice(0, MAX_HITS);
     markHits();
     state.hits[0]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
     sendUpdate({
+      ...emptyPayload,
       selector,
       count: matches.length,
-      matches: matches.slice(0, MAX_MATCHES).map(toItem),
-      error: ""
+      matches: matches.slice(0, MAX_MATCHES).map(toItem)
     });
   };
 

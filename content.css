@@ -2,8 +2,9 @@
 @import url("tokens.css");
 
 [data-seldbg-match] {
+  background: var(--sdbg-backdrop) !important;
   outline: 3px solid var(--sdbg-highlight) !important;
-  outline-offset: 2px !important;
+  outline-offset: -2px !important;
   border-radius: 4px;
   filter: saturate(1);
 }
