@@ -22,25 +22,25 @@ const state = {
 };
 
 const truncate = (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s);
-const fmtAttr = ([k, v]) => (v ? `${k}="${truncate(v, 40)}"` : k);
+const fmtAttr = ([k, v]) => (v ? `${k}="${truncate(v, 24)}"` : k);
 
 const normalizeText = (text = "") => `${text}`.trim().replace(/\s+/g, " ");
-
-const hueOf = (s) =>
-  ((([...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 0)) % 360) + 360) % 360;
-
-const hueFor = {
-  tag: (v) => hueOf(v),
-  cls: (v) => hueOf(v.slice(1)),
-  attr: (v) => hueOf(v.split("=")[0])
-};
+const rowSections = [
+  ({ tag, id }) => ({
+    key: "identity",
+    tokens: [["tag", tag], ["id", id]]
+  }),
+  ({ classes }) => ({ key: "classes", tokens: classes.map((value) => ["cls", value]) }),
+  ({ attrs }) => ({ key: "attrs", tokens: attrs.slice(0, 2).map((value) => ["attr", value]) }),
+  ({ text }) => ({ key: "text", tokens: text ? [["text", `"${text}"`]] : [] })
+];
 
 const toLabelParts = (item) => ({
   tag: item.tag,
   id: item.id ? `#${item.id}` : "",
   classes: (item.classes || []).map((c) => `.${c}`),
-  attrs: (item.attrs || []).map(fmtAttr),
-  text: truncate(normalizeText(item.text), 60)
+  attrs: (item.attrs || []).slice(0, 2).map(fmtAttr),
+  text: truncate(normalizeText(item.text), 56)
 });
 
 const render = (payload) => {
@@ -51,24 +51,34 @@ const render = (payload) => {
   state.selectedIndex = selectedIndex !== null && selectedIndex < next.matches.length ? selectedIndex : null;
   state.payload = next;
   const { selector, count, matches, error } = next;
-  metaNode.textContent = selector ? `${count} match(es) for: ${selector}` : "No selector yet.";
+  if (selector) {
+    const countNode = Object.assign(el("div"), { id: "meta-count" });
+    const countNum = Object.assign(el("span"), { className: "meta-stat-num", textContent: String(count) });
+    const countLabel = Object.assign(el("span"), {
+      className: "meta-stat-label",
+      textContent: count === 1 ? "match" : "matches"
+    });
+    countNode.append(countNum, countLabel);
+    const selectorNode = Object.assign(el("code"), { id: "meta-selector", textContent: selector });
+    metaNode.className = "meta-head";
+    metaNode.replaceChildren(countNode, selectorNode);
+  } else {
+    metaNode.className = "meta-empty";
+    metaNode.textContent = "No selector yet.";
+  }
   errorNode.textContent = error;
   errorNode.style.display = error ? "block" : "none";
   const toRow = (item, index) => {
-    const { tag, id, classes, attrs, text } = toLabelParts(item);
-    const pills = [
-      ["tag", tag],
-      ["id", id],
-      ...classes.map((c) => ["cls", c]),
-      ...attrs.map((a) => ["attr", a]),
-      ["text", text && `"${text}"`]
-    ].filter(([, value]) => value);
+    const parts = toLabelParts(item);
     const row = el("li");
-    for (const [kind, value] of pills) {
-      const span = Object.assign(el("span"), { className: `pill ${kind}`, textContent: value });
-      const hue = hueFor[kind]?.(value);
-      if (hue != null) span.style.setProperty("--hue", hue);
-      row.append(span);
+    for (const { key, tokens } of rowSections.map((build) => build(parts))) {
+      if (!tokens.length) continue;
+      const section = Object.assign(el("div"), { className: `row-section ${key}` });
+      for (const [kind, value] of tokens.filter(([, value]) => value)) {
+        const chip = Object.assign(el("span"), { className: `chip ${kind}`, textContent: value });
+        section.append(chip);
+      }
+      row.append(section);
     }
     row.dataset.index = `${index}`;
     if (index === state.selectedIndex) row.classList.add("is-active");

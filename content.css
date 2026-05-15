@@ -3,14 +3,15 @@
 
 [data-csrepl-match] {
   background: var(--csrepl-backdrop) !important;
-  outline: 3px solid var(--csrepl-highlight) !important;
-  outline-offset: -2px !important;
-  border-radius: 4px;
+  outline: 3px dashed var(--csrepl-highlight) !important;
+  outline-offset: 6px;
+  border-radius: 6px !important;
   filter: saturate(1);
 }
 [data-csrepl-match="active"] {
   outline: 5px solid var(--csrepl-accent) !important;
-  filter: saturate(2);
+  outline-offset: 4px !important;
+  filter: sepia(1) saturate(5) hue-rotate(1deg);
 }
 
 #__csrepl_root__ {
@@ -29,7 +30,7 @@
     direction: ltr;
     outline: solid 4px white;
     border-radius: 18px;
-    box-shadow: 0 0 16px 4px white, inset 0 0 22px white !important;
+    box-shadow: #ffffff99 0px 0px 32px, white 0px 0px 22px inset !important;
     background: var(--csrepl-fade);
     backdrop-filter: brightness(0.9) blur(20px);
   }
