@@ -250,46 +250,48 @@ if (!globalThis.__csrepl_booted) {
 
   const makeToast = () => Object.assign(el("div"), { className: TOAST_CLASS });
 
-  const mount = () => {
-    if (state.input) return state.input;
-    const existing = $id(ROOT_ID);
-    if (existing) {
-      state.input = existing.querySelector("input");
-      const row = existing.querySelector(`.${ROW_CLASS}`);
-      const hasButton = existing.querySelector(`.${COPY_BTN_CLASS}`);
-      if (row) {
-        if (!hasButton) row.append(makeCopyButton());
-        ensureCountInRow(row);
-      }
-      if (!row && state.input) {
-        const nextRow = el("div");
-        nextRow.className = ROW_CLASS;
-        state.input.replaceWith(nextRow);
-        const count = makeCountNode();
-        nextRow.append(state.input, count, makeCopyButton());
-        state.countNode = count;
-      }
-      if (!existing.querySelector(`.${TOAST_CLASS}`)) existing.append(makeToast());
-      if (state.input) attachInputListeners(state.input);
-      return state.input;
-    }
-    const root = el("div");
-    const row = el("div");
-    root.id = ROOT_ID;
-    row.className = ROW_CLASS;
-    const input = el("input");
-    input.type = "text";
-    input.placeholder = "Type CSS selector...";
-    input.autocomplete = "off";
-    input.spellcheck = false;
+  const mountFresh = () => {
+    const root = Object.assign(el("div"), { id: ROOT_ID });
+    const row = Object.assign(el("div"), { className: ROW_CLASS });
+    const input = Object.assign(el("input"), {
+      type: "text",
+      placeholder: "Type CSS selector...",
+      autocomplete: "off",
+      spellcheck: false
+    });
     const count = makeCountNode();
     row.append(attachInputListeners(input), count, makeCopyButton());
-    root.append(row);
-    root.append(makeToast());
+    root.append(row, makeToast());
     (document.body || document.documentElement).append(root);
     state.input = input;
     state.countNode = count;
     return input;
+  };
+
+  const adoptExistingRoot = (existing) => {
+    state.input = existing.querySelector("input");
+    const row = existing.querySelector(`.${ROW_CLASS}`);
+
+    if (row && !existing.querySelector(`.${COPY_BTN_CLASS}`)) row.append(makeCopyButton());
+    if (row) ensureCountInRow(row);
+
+    if (!row && state.input) {
+      const nextRow = Object.assign(el("div"), { className: ROW_CLASS });
+      state.input.replaceWith(nextRow);
+      const count = makeCountNode();
+      nextRow.append(state.input, count, makeCopyButton());
+      state.countNode = count;
+    }
+
+    if (!existing.querySelector(`.${TOAST_CLASS}`)) existing.append(makeToast());
+    if (state.input) attachInputListeners(state.input);
+    return state.input;
+  };
+
+  const mount = () => {
+    if (state.input) return state.input;
+    const existing = $id(ROOT_ID);
+    return existing ? adoptExistingRoot(existing) : mountFresh();
   };
 
   const open = () => {
