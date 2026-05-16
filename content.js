@@ -21,9 +21,8 @@ if (!globalThis.__csrepl_booted) {
   };
 
   const emptyPayload = { selector: "", count: 0, matches: [], error: "" };
-  const inputStopEvents = ["keydown", "keyup", "keypress"];
+  const inputStopEvents = ["keydown", "keyup"];
 
-  const runtime = globalThis.chrome?.runtime || globalThis.browser?.runtime;
   const $ = document.querySelector.bind(document);
   const $id = document.getElementById.bind(document);
   const el = (tag) => document.createElement(tag);
@@ -41,21 +40,22 @@ if (!globalThis.__csrepl_booted) {
   };
 
   const unmarkHits = () => {
-    for (const node of state.hits) node?.removeAttribute?.(MATCH_ATTR);
+    for (const node of state.hits) node.removeAttribute(MATCH_ATTR);
   };
 
   const sendUpdate = (payload) => {
-    if (!runtime?.sendMessage) return;
-    runtime.sendMessage({ type: "selector:update", payload }, () => {
-      void globalThis.chrome?.runtime?.lastError;
+    chrome.runtime.sendMessage({ type: "selector:update", payload }, () => {
+      void chrome.runtime.lastError;
     });
   };
   const setCount = ({ visible = false, count = 0 } = {}) => {
     const node = state.countNode;
     if (!(node instanceof HTMLElement)) return;
-    node.textContent = `${count}`;
-    node.hidden = !visible;
-    node.setAttribute("aria-hidden", visible ? "false" : "true");
+    Object.assign(node, {
+      textContent: `${count}`,
+      hidden: !visible,
+      ariaHidden: visible ? "false" : "true"
+    });
   };
   const evaluateFromInputEvent = (event) => evaluate(event.target.value);
   const focusInputWithRetry = (input) => {
@@ -66,7 +66,6 @@ if (!globalThis.__csrepl_booted) {
     };
     focusInput();
     requestAnimationFrame(focusInput);
-    setTimeout(focusInput, 120);
     return true;
   };
   const clearAndFocusInput = (input = state.input) => {
@@ -123,8 +122,7 @@ if (!globalThis.__csrepl_booted) {
     text: compactText(node.innerText || node.textContent || "")
   });
 
-  const isDebuggerNode = (node) =>
-    node.id === ROOT_ID || node.closest?.(`#${ROOT_ID}`);
+  const isDebuggerNode = (node) => node.id === ROOT_ID || node.closest(`#${ROOT_ID}`);
 
   const selectNodes = (selector) => {
     try {
@@ -239,11 +237,9 @@ if (!globalThis.__csrepl_booted) {
       className: COPY_BTN_CLASS,
       ariaLabel: "Copy selector"
     });
-    const icon = Object.assign(el("img"), {
-      src: chrome.runtime.getURL("assets/copy.svg"),
-      alt: ""
-    });
-    button.append(icon);
+    button.append(
+      Object.assign(el("img"), { src: chrome.runtime.getURL("assets/copy.svg"), alt: "" })
+    );
     button.addEventListener("click", copySelector);
     return button;
   };
@@ -262,7 +258,7 @@ if (!globalThis.__csrepl_booted) {
     const count = makeCountNode();
     row.append(attachInputListeners(input), count, makeCopyButton());
     root.append(row, makeToast());
-    (document.body || document.documentElement).append(root);
+    document.body.append(root);
     state.input = input;
     state.countNode = count;
     return input;
@@ -301,6 +297,7 @@ if (!globalThis.__csrepl_booted) {
   };
 
   const messageHandlers = {
+    "debugger:ping": () => undefined,
     "debugger:open": () => open(),
     "debugger:reset": () => clearAndFocusInput(),
     "debugger:close": () => close(),

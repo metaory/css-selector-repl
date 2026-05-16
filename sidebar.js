@@ -1,5 +1,10 @@
 const $id = document.getElementById.bind(document);
 const el = (tag) => document.createElement(tag);
+const mk = (tag, { children, ...props } = {}) => {
+  const node = Object.assign(el(tag), props);
+  if (children?.length) node.append(...children);
+  return node;
+};
 const sendRuntime = (message, callback) =>
   chrome.runtime.sendMessage(message, callback || (() => void chrome.runtime.lastError));
 
@@ -43,44 +48,17 @@ const toLabelParts = (item) => ({
   text: truncate(normalizeText(item.text), 56)
 });
 
-const renderMetaEmpty = () => {
-  metaNode.className = "meta-empty";
-  metaNode.textContent = "No selector yet.";
-};
-
-const renderMetaHead = (selector, count) => {
-  const countNode = Object.assign(el("div"), { id: "meta-count" });
-  const countNum = Object.assign(el("span"), { className: "meta-stat-num", textContent: String(count) });
-  const countLabel = Object.assign(el("span"), {
-    className: "meta-stat-label",
-    textContent: count === 1 ? "match" : "matches"
-  });
-  countNode.append(countNum, countLabel);
-  const selectorNode = Object.assign(el("code"), { id: "meta-selector", textContent: selector });
-  metaNode.className = "meta-head";
-  metaNode.replaceChildren(countNode, selectorNode);
-};
-
-const renderMeta = (selector, count) => {
-  if (!selector) return renderMetaEmpty();
-  renderMetaHead(selector, count);
-};
-
-const renderError = (error) => {
-  errorNode.textContent = error;
-  errorNode.style.display = error ? "block" : "none";
-};
-
 const toRow = (item, index) => {
   const parts = toLabelParts(item);
   const row = el("li");
   for (const { key, tokens } of rowSections.map((build) => build(parts))) {
     if (!tokens.length) continue;
-    const section = Object.assign(el("div"), { className: `row-section ${key}` });
-    for (const [kind, value] of tokens.filter(([, value]) => value)) {
-      const chip = Object.assign(el("span"), { className: `chip ${kind}`, textContent: value });
-      section.append(chip);
-    }
+    const section = mk("div", {
+      className: `row-section ${key}`,
+      children: tokens
+        .filter(([, value]) => value)
+        .map(([kind, value]) => mk("span", { className: `chip ${kind}`, textContent: value }))
+    });
     row.append(section);
   }
   row.dataset.index = `${index}`;
@@ -95,9 +73,27 @@ const render = (payload) => {
   const selectedIndex = selectorChanged ? null : state.selectedIndex;
   state.selectedIndex = selectedIndex !== null && selectedIndex < next.matches.length ? selectedIndex : null;
   state.payload = next;
-  renderMeta(next.selector, next.count);
-  renderError(next.error);
-  listNode.replaceChildren(...next.matches.map(toRow));
+  const { selector, count, matches, error } = next;
+  if (!selector) {
+    Object.assign(metaNode, { className: "meta-empty", textContent: "No selector yet." });
+  } else {
+    Object.assign(metaNode, { className: "meta-head" });
+    metaNode.replaceChildren(
+      mk("div", {
+        id: "meta-count",
+        children: [
+          mk("span", { className: "meta-stat-num", textContent: String(count) }),
+          mk("span", {
+            className: "meta-stat-label",
+            textContent: count === 1 ? "match" : "matches"
+          })
+        ]
+      }),
+      mk("code", { id: "meta-selector", textContent: selector })
+    );
+  }
+  Object.assign(errorNode, { textContent: error, hidden: !error });
+  listNode.replaceChildren(...matches.map(toRow));
 };
 
 const setHoveredIndex = (index) => {
@@ -157,7 +153,7 @@ listNode.addEventListener("mouseover", (event) => {
   setHoveredIndex(index);
 });
 
-const onListMouseout = (event) => {
+listNode.addEventListener("mouseout", (event) => {
   const row = getRowFromTarget(event.target);
   if (!row) return;
   const nextRow = getRowFromTarget(event.relatedTarget);
@@ -166,9 +162,7 @@ const onListMouseout = (event) => {
   const index = Number(nextRow.dataset.index);
   if (!Number.isInteger(index)) return;
   setHoveredIndex(index);
-};
-
-listNode.addEventListener("mouseout", onListMouseout);
+});
 
 chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
   state.tabId = tab?.id || null;
@@ -187,4 +181,3 @@ document.addEventListener(
   },
   true
 );
-

@@ -94,7 +94,7 @@
             }
           }
 
-          & #error { color: var(--csrepl-error); display: none; }
+          & #error { color: var(--csrepl-error); }
 
           & #list {
             margin: 0;
@@ -217,8 +217,7 @@
               }
 
               &.text {
-                display: -webkit-box;
-                align-items: flex-start;
+                display: block;
                 border-radius: 0;
                 background: rgb(255 138 128 / 10%);
                 color: rgb(255 218 214);
@@ -229,9 +228,7 @@
                 padding: 4px 9px;
                 line-height: 1.45;
                 overflow: hidden;
-                -webkit-box-orient: vertical;
                 line-clamp: 2;
-                -webkit-line-clamp: 2;
               }
             }
           }
@@ -242,7 +239,7 @@
   <body>
     <main id="app">
       <div id="meta" class="meta-empty">No selector yet.</div>
-      <p id="error"></p>
+      <p id="error" hidden></p>
       <ul id="list"></ul>
     </main>
     <script src="sidebar.js"></script>

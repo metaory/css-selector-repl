@@ -95,25 +95,18 @@ const setTabActive = (tabId, active) => {
 
 const isTabActive = (tabId) => getTabState(tabId).active === true;
 
-const closeSidePanelByWindow = (tabId) =>
-  chrome.tabs
-    .get(tabId)
-    .then((tab) => {
-      if (!Number.isInteger(tab?.windowId)) return undefined;
-      return chrome.sidePanel.close({ windowId: tab.windowId }).catch(() => undefined);
-    })
-    .catch(() => undefined);
-
-const closeSidePanelNative = (tabId) =>
-  chrome.sidePanel.close({ tabId }).catch(() => closeSidePanelByWindow(tabId));
-
-const closeSidePanelLegacy = (tabId) =>
-  chrome.sidePanel.setOptions({ tabId, enabled: false }).catch(() => undefined);
-
 const closeSidePanel = (tabId) => {
   if (!isTabId(tabId)) return Promise.resolve();
-  if (typeof chrome.sidePanel?.close !== "function") return closeSidePanelLegacy(tabId);
-  return closeSidePanelNative(tabId);
+  return chrome.sidePanel.close({ tabId }).catch(() =>
+    chrome.tabs
+      .get(tabId)
+      .then((tab) =>
+        Number.isInteger(tab?.windowId)
+          ? chrome.sidePanel.close({ windowId: tab.windowId })
+          : undefined
+      )
+      .catch(() => undefined)
+  );
 };
 
 const openSidePanel = (tabId) =>
@@ -172,12 +165,11 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
   }
 });
 
-const onSidePanelOpened = (panel) => {
+chrome.sidePanel.onOpened.addListener((panel) => {
   if (!isTabId(panel?.tabId)) return;
   setTabActive(panel.tabId, true);
   ensureDebuggerInput(panel.tabId);
-};
-chrome.sidePanel?.onOpened?.addListener(onSidePanelOpened);
+});
 
 const forwardToTab = (message) =>
   ensureContentScript(message.tabId).then(() => sendTabMessage(message.tabId, message));

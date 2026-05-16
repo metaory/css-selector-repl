@@ -2,6 +2,7 @@
 @import url("tokens.css");
 
 [data-csrepl-match] {
+  position: relative !important;
   background: var(--csrepl-bg) !important;
   outline: 3px dashed var(--csrepl-highlight) !important;
   border-radius: 0 !important;
@@ -10,6 +11,7 @@
   border: none !important;
   filter: sepia(1) saturate(2) hue-rotate(90deg);
   transition: all 0.3s ease;
+  color: white !important;
 
   &[data-csrepl-match="active"] {
     outline: 6px solid var(--csrepl-accent) !important;
