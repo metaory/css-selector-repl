@@ -10,13 +10,14 @@
   border: none !important;
   filter: sepia(1) saturate(2) hue-rotate(90deg);
   transition: all 0.3s ease;
-}
-[data-csrepl-match="active"] {
-  outline: 6px solid var(--csrepl-accent) !important;
-  outline-offset: 0 !important;
-  z-index: 9999 !important;
-  border: none !important;
-  filter: sepia(1) saturate(4) hue-rotate(1deg);
+
+  &[data-csrepl-match="active"] {
+    outline: 6px solid var(--csrepl-accent) !important;
+    outline-offset: 0 !important;
+    z-index: 9999 !important;
+    border: none !important;
+    filter: sepia(1) saturate(4) hue-rotate(1deg);
+  }
 }
 
 #__csrepl_root__ {
