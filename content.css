@@ -2,16 +2,21 @@
 @import url("tokens.css");
 
 [data-csrepl-match] {
-  background: var(--csrepl-backdrop) !important;
+  background: var(--csrepl-bg) !important;
   outline: 3px dashed var(--csrepl-highlight) !important;
-  outline-offset: 6px;
-  border-radius: 6px !important;
-  filter: saturate(1);
+  border-radius: 0 !important;
+  outline-offset: 2px !important;
+  z-index: 999 !important;
+  border: none !important;
+  filter: sepia(1) saturate(2) hue-rotate(90deg);
+  transition: all 0.3s ease;
 }
 [data-csrepl-match="active"] {
-  outline: 5px solid var(--csrepl-accent) !important;
-  outline-offset: 4px !important;
-  filter: sepia(1) saturate(5) hue-rotate(1deg);
+  outline: 6px solid var(--csrepl-accent) !important;
+  outline-offset: 0 !important;
+  z-index: 9999 !important;
+  border: none !important;
+  filter: sepia(1) saturate(4) hue-rotate(1deg);
 }
 
 #__csrepl_root__ {
