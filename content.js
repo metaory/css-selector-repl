@@ -3,6 +3,7 @@ if (!globalThis.__csrepl_booted) {
 
   const ROOT_ID = "__csrepl_root__";
   const ROW_CLASS = "__csrepl_row__";
+  const COUNT_CLASS = "__csrepl_count__";
   const COPY_BTN_CLASS = "__csrepl_copy_btn__";
   const TOAST_CLASS = "__csrepl_toast__";
   const TOAST_SHOW_CLASS = "__csrepl_toast_show__";
@@ -12,6 +13,7 @@ if (!globalThis.__csrepl_booted) {
 
   const state = {
     input: null,
+    countNode: null,
     hits: [],
     selectedIndex: null,
     hoveredIndex: null,
@@ -47,6 +49,13 @@ if (!globalThis.__csrepl_booted) {
     runtime.sendMessage({ type: "selector:update", payload }, () => {
       void globalThis.chrome?.runtime?.lastError;
     });
+  };
+  const setCount = ({ visible = false, count = 0 } = {}) => {
+    const node = state.countNode;
+    if (!(node instanceof HTMLElement)) return;
+    node.textContent = `${count}`;
+    node.hidden = !visible;
+    node.setAttribute("aria-hidden", visible ? "false" : "true");
   };
   const evaluateFromInputEvent = (event) => evaluate(event.target.value);
   const focusInputWithRetry = (input) => {
@@ -131,17 +140,20 @@ if (!globalThis.__csrepl_booted) {
   const evaluate = (selector) => {
     clearHits();
     if (!selector.trim()) {
+      setCount();
       sendUpdate({ ...emptyPayload, selector });
       return;
     }
     const { matches, error } = selectNodes(selector);
     if (error) {
+      setCount({ visible: true, count: 0 });
       sendUpdate({ ...emptyPayload, selector, error });
       return;
     }
     state.hits = matches.slice(0, MAX_HITS);
     markHits();
     state.hits[0]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    setCount({ visible: true, count: matches.length });
     sendUpdate({
       ...emptyPayload,
       selector,
@@ -152,11 +164,13 @@ if (!globalThis.__csrepl_booted) {
 
   const close = () => {
     if (state.input) state.input.value = "";
+    setCount();
     sendUpdate(emptyPayload);
     if (state.toastTimer) clearTimeout(state.toastTimer);
     unmarkHits();
     $id(ROOT_ID)?.remove();
     state.input = null;
+    state.countNode = null;
     state.toastTimer = 0;
   };
 
@@ -198,6 +212,27 @@ if (!globalThis.__csrepl_booted) {
     copyToClipboard(input.value);
   };
 
+  const makeCountNode = () =>
+    Object.assign(el("span"), {
+      className: COUNT_CLASS,
+      hidden: true,
+      textContent: "0",
+      ariaLabel: "Match count",
+      ariaHidden: "true"
+    });
+
+  const ensureCountInRow = (row) => {
+    const existing = row.querySelector(`.${COUNT_CLASS}`);
+    if (existing instanceof HTMLElement) {
+      state.countNode = existing;
+      return;
+    }
+    const count = makeCountNode();
+    const button = row.querySelector(`.${COPY_BTN_CLASS}`);
+    button ? row.insertBefore(count, button) : row.append(count);
+    state.countNode = count;
+  };
+
   const makeCopyButton = () => {
     const button = Object.assign(el("button"), {
       type: "button",
@@ -222,13 +257,17 @@ if (!globalThis.__csrepl_booted) {
       state.input = existing.querySelector("input");
       const row = existing.querySelector(`.${ROW_CLASS}`);
       const hasButton = existing.querySelector(`.${COPY_BTN_CLASS}`);
-      if (row && !hasButton) row.append(makeCopyButton());
+      if (row) {
+        if (!hasButton) row.append(makeCopyButton());
+        ensureCountInRow(row);
+      }
       if (!row && state.input) {
         const nextRow = el("div");
         nextRow.className = ROW_CLASS;
         state.input.replaceWith(nextRow);
-        nextRow.append(state.input);
-        nextRow.append(makeCopyButton());
+        const count = makeCountNode();
+        nextRow.append(state.input, count, makeCopyButton());
+        state.countNode = count;
       }
       if (!existing.querySelector(`.${TOAST_CLASS}`)) existing.append(makeToast());
       if (state.input) attachInputListeners(state.input);
@@ -243,12 +282,13 @@ if (!globalThis.__csrepl_booted) {
     input.placeholder = "Type CSS selector...";
     input.autocomplete = "off";
     input.spellcheck = false;
-    row.append(attachInputListeners(input));
-    row.append(makeCopyButton());
+    const count = makeCountNode();
+    row.append(attachInputListeners(input), count, makeCopyButton());
     root.append(row);
     root.append(makeToast());
     (document.body || document.documentElement).append(root);
     state.input = input;
+    state.countNode = count;
     return input;
   };
 

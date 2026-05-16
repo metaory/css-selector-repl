@@ -66,6 +66,19 @@
     }
   }
 
+  & .__csrepl_count__ {
+    min-width: 2.5ch;
+    padding: 2px 8px 1px;
+    border-radius: 999px;
+    font: 800 26px / 1 "Baloo 2", system-ui, sans-serif;
+    color: var(--csrepl-bg);
+    background: var(--csrepl-fade);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.9;
+    user-select: none;
+  }
+
   & .__csrepl_copy_btn__ {
     margin-right: 12px;
     display: grid;
