@@ -94,7 +94,8 @@ if (!globalThis.__csrepl_booted) {
     if (input.dataset.csreplInputReady === "1") return input;
     input.dataset.csreplInputReady = "1";
     input.addEventListener("keydown", clearInputOnEscape);
-    input.addEventListener("keydown", copyInputAllOnAltC);
+    input.addEventListener("keydown", copyInputOnCtrlCWhenCollapsed);
+    input.addEventListener("copy", showCopiedToast);
     input.addEventListener("focus", selectInputOnFocus);
     for (const eventName of inputStopEvents) {
       input.addEventListener(eventName, stopInputEventPropagation);
@@ -201,13 +202,17 @@ if (!globalThis.__csrepl_booted) {
       .catch(() => showToast("Copy failed"));
   };
   const copySelector = () => copyToClipboard(state.input?.value?.trim() || "");
-  const copyInputAllOnAltC = (event) => {
-    if (!event.altKey || event.ctrlKey || event.metaKey) return;
+  const inputHasSelection = (input) => input.selectionStart !== input.selectionEnd;
+  const showCopiedToast = () => showToast("Copied");
+  const copyInputOnCtrlCWhenCollapsed = (event) => {
     if (event.code !== "KeyC") return;
+    if (!event.ctrlKey && !event.metaKey) return;
+    if (event.altKey) return;
     const input = event.target;
     if (!(input instanceof HTMLInputElement)) return;
+    if (inputHasSelection(input)) return;
     event.preventDefault();
-    copyToClipboard(input.value);
+    copyToClipboard(input.value.trim());
   };
 
   const makeCountNode = () =>
