@@ -57,21 +57,17 @@ if (!globalThis.__csrepl_booted) {
       ariaHidden: visible ? "false" : "true"
     });
   };
-  const focusInputWithRetry = (input) => {
+  const focusInput = (input) => {
     if (!(input instanceof HTMLInputElement)) return false;
-    const focusInput = () => {
-      input.focus({ preventScroll: true });
-      input.select();
-    };
-    focusInput();
-    requestAnimationFrame(focusInput);
+    input.focus({ preventScroll: true });
+    input.select();
     return true;
   };
   const clearAndFocusInput = (input = state.input) => {
     if (!(input instanceof HTMLInputElement)) return false;
     input.value = "";
     evaluate("");
-    focusInputWithRetry(input);
+    focusInput(input);
     return true;
   };
   const clearInputOnEscape = (event) => {
@@ -302,13 +298,14 @@ if (!globalThis.__csrepl_booted) {
 
   const open = () => {
     const input = mount();
-    focusInputWithRetry(input);
     evaluate(input.value);
+    if (document.hasFocus()) focusInput(input);
   };
 
   const messageHandlers = {
     "debugger:ping": () => undefined,
     "debugger:open": () => open(),
+    "debugger:focus-input": () => focusInput(state.input || mount()),
     "debugger:reset": () => clearAndFocusInput(),
     "debugger:close": () => close(),
     "selector:focus": (message) => focusByIndex(message.index),

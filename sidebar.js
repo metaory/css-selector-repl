@@ -125,15 +125,21 @@ const focusItem = (index) => {
 const getRowFromTarget = (target) =>
   target instanceof Element ? target.closest("li[data-index]") : null;
 
+const focusPageInput = () =>
+  state.tabId && sendRuntime({ type: "debugger:focus-input", tabId: state.tabId });
+
 const fetchInitial = () => {
   if (!state.tabId) return;
-  sendRuntime({ type: "debugger:ensure-open", tabId: state.tabId });
-  sendRuntime({ type: "sidebar:init", tabId: state.tabId }, render);
+  sendRuntime({ type: "sidebar:init", tabId: state.tabId }, (payload) => {
+    render(payload);
+    focusPageInput();
+  });
 };
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type !== "selector:update" || message.tabId !== state.tabId) return;
-  render(message.payload);
+  if (message.tabId !== state.tabId) return;
+  if (message.type === "selector:update") return render(message.payload);
+  if (message.type === "sidebar:opened") return focusPageInput();
 });
 
 listNode.addEventListener("click", (event) => {

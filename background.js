@@ -117,7 +117,8 @@ const openSidePanel = (tabId) =>
 const activateDebugger = (tabId) => {
   if (!isTabId(tabId)) return Promise.resolve();
   setTabActive(tabId, true);
-  return openSidePanel(tabId).then(() => ensureDebuggerInput(tabId)).catch(() => undefined);
+  void openSidePanel(tabId).catch(() => undefined);
+  return ensureDebuggerInput(tabId);
 };
 
 const deactivateDebugger = (tabId) => {
@@ -168,7 +169,9 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
 chrome.sidePanel.onOpened.addListener((panel) => {
   if (!isTabId(panel?.tabId)) return;
   setTabActive(panel.tabId, true);
-  ensureDebuggerInput(panel.tabId);
+  chrome.runtime.sendMessage({ type: "sidebar:opened", tabId: panel.tabId }, () =>
+    void chrome.runtime.lastError
+  );
 });
 
 const forwardToTab = (message) =>
@@ -180,15 +183,11 @@ const messageHandlers = {
     if (!isTabId(tabId)) return;
     setTabPayload(tabId, message.payload);
   },
-  "debugger:ensure-open": (message) => {
-    if (!isTabId(message.tabId)) return;
-    setTabActive(message.tabId, true);
-    ensureDebuggerInput(message.tabId);
-  },
   "selector:focus": forwardToTab,
   "selector:hover": forwardToTab,
   "selector:hover-clear": forwardToTab,
   "debugger:reset": forwardToTab,
+  "debugger:focus-input": forwardToTab,
   "sidebar:init": (message, _sender, sendResponse) => {
     sendResponse(getTabState(message.tabId).payload);
   }
