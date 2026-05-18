@@ -5,7 +5,6 @@
   position: relative !important;
   visibility: visible !important;
   opacity: 1 !important;
-  display: block !important;
   background: var(--csrepl-bg) !important;
   outline: 3px dashed var(--csrepl-highlight) !important;
   border-radius: 0 !important;

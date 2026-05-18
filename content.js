@@ -57,7 +57,6 @@ if (!globalThis.__csrepl_booted) {
       ariaHidden: visible ? "false" : "true"
     });
   };
-  const evaluateFromInputEvent = (event) => evaluate(event.target.value);
   const focusInputWithRetry = (input) => {
     if (!(input instanceof HTMLInputElement)) return false;
     const focusInput = () => {
@@ -90,19 +89,6 @@ if (!globalThis.__csrepl_booted) {
   };
   const stopInputEventPropagation = (event) => event.stopPropagation();
   const selectInputOnFocus = (event) => event.target.select();
-  const attachInputListeners = (input) => {
-    if (input.dataset.csreplInputReady === "1") return input;
-    input.dataset.csreplInputReady = "1";
-    input.addEventListener("keydown", clearInputOnEscape);
-    input.addEventListener("keydown", copyInputOnCtrlCWhenCollapsed);
-    input.addEventListener("copy", showCopiedToast);
-    input.addEventListener("focus", selectInputOnFocus);
-    for (const eventName of inputStopEvents) {
-      input.addEventListener(eventName, stopInputEventPropagation);
-    }
-    input.addEventListener("input", evaluateFromInputEvent);
-    return input;
-  };
 
   const clearHits = () => {
     unmarkHits();
@@ -124,6 +110,8 @@ if (!globalThis.__csrepl_booted) {
   });
 
   const isDebuggerNode = (node) => node.id === ROOT_ID || node.closest(`#${ROOT_ID}`);
+  const scrollHitIntoView = (node) =>
+    node?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
 
   const selectNodes = (selector) => {
     try {
@@ -151,7 +139,7 @@ if (!globalThis.__csrepl_booted) {
     }
     state.hits = matches.slice(0, MAX_HITS);
     markHits();
-    state.hits[0]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    scrollHitIntoView(state.hits[0]);
     setCount({ visible: true, count: matches.length });
     sendUpdate({
       ...emptyPayload,
@@ -166,7 +154,7 @@ if (!globalThis.__csrepl_booted) {
     setCount();
     sendUpdate(emptyPayload);
     if (state.toastTimer) clearTimeout(state.toastTimer);
-    unmarkHits();
+    clearHits();
     $id(ROOT_ID)?.remove();
     state.input = null;
     state.countNode = null;
@@ -179,7 +167,7 @@ if (!globalThis.__csrepl_booted) {
     if (!node) return;
     state.selectedIndex = index;
     markHits();
-    node.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    scrollHitIntoView(node);
   };
 
   const showToast = (message) => {
@@ -194,25 +182,42 @@ if (!globalThis.__csrepl_booted) {
     }, 3_000);
   };
 
+  const TOAST_COPIED = "Copied";
   const copyToClipboard = (text) => {
     if (!text) return showToast("Nothing to copy");
     navigator.clipboard
       .writeText(text)
-      .then(() => showToast("Selector copied"))
+      .then(() => showToast(TOAST_COPIED))
       .catch(() => showToast("Copy failed"));
   };
   const copySelector = () => copyToClipboard(state.input?.value?.trim() || "");
   const inputHasSelection = (input) => input.selectionStart !== input.selectionEnd;
-  const showCopiedToast = () => showToast("Copied");
   const copyInputOnCtrlCWhenCollapsed = (event) => {
-    if (event.code !== "KeyC") return;
+    if (event.code !== "KeyC" || event.altKey) return;
     if (!event.ctrlKey && !event.metaKey) return;
-    if (event.altKey) return;
-    const input = event.target;
-    if (!(input instanceof HTMLInputElement)) return;
-    if (inputHasSelection(input)) return;
+    if (!(event.target instanceof HTMLInputElement)) return;
+    if (inputHasSelection(event.target)) return;
     event.preventDefault();
-    copyToClipboard(input.value.trim());
+    copySelector();
+  };
+
+  const inputListeners = [
+    ["keydown", clearInputOnEscape],
+    ["keydown", copyInputOnCtrlCWhenCollapsed],
+    ["copy", () => showToast(TOAST_COPIED)],
+    ["focus", selectInputOnFocus],
+    ["input", (event) => evaluate(event.target.value)]
+  ];
+  const attachInputListeners = (input) => {
+    if (input.dataset.csreplInputReady === "1") return input;
+    input.dataset.csreplInputReady = "1";
+    for (const [eventName, handler] of inputListeners) {
+      input.addEventListener(eventName, handler);
+    }
+    for (const eventName of inputStopEvents) {
+      input.addEventListener(eventName, stopInputEventPropagation);
+    }
+    return input;
   };
 
   const makeCountNode = () =>
