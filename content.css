@@ -1,24 +1,34 @@
 @import url("fonts.css");
 @import url("tokens.css");
 
-[data-csrepl-match] {
+[data-csrepl-match][data-csrepl-match] {
   position: relative !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
   background: var(--csrepl-bg) !important;
   outline: 3px dashed var(--csrepl-highlight) !important;
   border-radius: 0 !important;
   outline-offset: 2px !important;
   z-index: 999 !important;
   border: none !important;
-  filter: sepia(1) saturate(2) hue-rotate(90deg);
-  transition: all 0.3s ease;
+  filter: sepia(1) saturate(2) hue-rotate(90deg) !important;
+  transition: all 0.3s ease !important;
   color: white !important;
+
+  &::before,
+  &::after {
+    content: none !important;
+    display: none !important;
+    border: none !important;
+  }
 
   &[data-csrepl-match="active"] {
     outline: 6px solid var(--csrepl-accent) !important;
     outline-offset: 0 !important;
     z-index: 9999 !important;
     border: none !important;
-    filter: sepia(1) saturate(4) hue-rotate(1deg);
+    filter: sepia(1) saturate(4) hue-rotate(1deg) !important;
   }
 }
 
