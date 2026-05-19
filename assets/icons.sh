@@ -2,8 +2,18 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+usage() {
+  echo "Usage: $(basename "$0") <path-to.svg>" >&2
+  exit 1
+}
+
+[[ $# -le 1 ]] || usage
+
 src="${1:-$root/assets/logo.svg}"
-out="${2:-$root/icons}"
+[[ "$src" = /* ]] || src="$root/$src"
+[[ -f "$src" ]] || { echo "SVG not found: $src" >&2; exit 1; }
+
+out="$root/icons"
 sizes=(16 32 48 128)
 mkdir -p "$out"
 
@@ -20,4 +30,4 @@ for size in "${sizes[@]}"; do
   render "$size"
 done
 
-echo "Generated ${#sizes[@]} MV3 icons in $out/"
+echo "Generated ${#sizes[@]} MV3 icons from $src into $out/"

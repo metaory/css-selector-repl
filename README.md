@@ -1,10 +1,11 @@
 <div align="center">
   <img src="icons/icon128.png" width="96" height="96" alt="css-selector-repl logo">
   <h1>css-selector-repl</h1>
-  <p><strong>Live REPL for CSS selectors.</strong></p>
+  <p><strong>Live CSS selector REPL</strong></p>
+  <p>CSS selectors evaluated on the live DOM · matches highlighted on each keystroke · input and panel survive page interaction</p>
 </div>
 
-Write a selector, see every match highlighted on the page in real time · and iterate without losing your work.
+---
 
 ## Why
 
@@ -44,9 +45,9 @@ The input and panel survive DOM mutations and page interaction · refine until t
 ## Usage
 
 | Action | Binding |
-|---|---|
-| Toggle REPL (input + Side Panel) | extension action / **Alt+S** |
-| Reload the extension | **Alt+R** |
+| --- | --- |
+| Toggle REPL (input + Side Panel) | extension action |
+| Toggle selector input | **Alt+S** |
 
 ## Limits
 

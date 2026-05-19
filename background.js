@@ -117,8 +117,13 @@ const openSidePanel = (tabId) =>
 const activateDebugger = (tabId) => {
   if (!isTabId(tabId)) return Promise.resolve();
   setTabActive(tabId, true);
-  void openSidePanel(tabId).catch(() => undefined);
   return ensureDebuggerInput(tabId);
+};
+
+const activateDebuggerWithSidePanel = (tabId) => {
+  if (!isTabId(tabId)) return Promise.resolve();
+  void openSidePanel(tabId).catch(() => undefined);
+  return activateDebugger(tabId);
 };
 
 const deactivateDebugger = (tabId) => {
@@ -131,16 +136,15 @@ const deactivateDebugger = (tabId) => {
   ]).catch(() => undefined);
 };
 
-const toggleDebugger = (tabId) =>
-  isTabActive(tabId) ? deactivateDebugger(tabId) : activateDebugger(tabId);
+const toggleDebugger = (tabId, activate = activateDebugger) =>
+  isTabActive(tabId) ? deactivateDebugger(tabId) : activate(tabId);
 
 chrome.action.onClicked.addListener((tab) => {
-  toggleDebugger(tab?.id);
+  toggleDebugger(tab?.id, activateDebuggerWithSidePanel);
 });
 
 const commandHandlers = {
-  "reload-extension": () => chrome.runtime.reload(),
-  "toggle-debugger": () => getActiveTab().then((tab) => toggleDebugger(tab?.id))
+  "toggle-selector-input": () => getActiveTab().then((tab) => toggleDebugger(tab?.id))
 };
 
 chrome.commands.onCommand.addListener((command) => {
