@@ -1,40 +1,37 @@
 <div align="center">
-  <img src="icons/icon128.png" width="96" height="96" alt="css-selector-repl logo">
-  <h1>css-selector-repl</h1>
-  <p><strong>Live CSS selector REPL</strong></p>
-  <p>CSS selectors evaluated on the live DOM · matches highlighted on each keystroke · input and panel survive page interaction</p>
+  <img src="icons/icon128.png" width="96" height="96" alt="Live CSS Queries logo">
+  <h1>Live CSS Queries</h1>
+  <p><strong>See live CSS selector results with instant highlights</strong></p>
+  <p>Inspect matches in a focused Side Panel while you refine selectors in place</p>
 </div>
 
 ---
 
 ## Why
 
-Crafting a precise selector against a real DOM is iterative, but the built-in tooling treats it as a one-shot operation.
+Selector work on a real DOM is iterative; most DevTools flows are one-shot.
 
 ### Existing approaches and their pain points
 
 | Approach | Limitation |
 |---|---|
-| DevTools → **Add style rule** (e.g. `border: 1px solid red`) | One-shot; any DOM interaction or typo wipes the experiment. No match count, no list. |
-| DevTools Console → `document.querySelectorAll(...)` | No live feedback on the page; you must expand the `NodeList` and click each entry to reveal it in the Elements tab. Re-typing every iteration. |
-| Inspect (`Ctrl+Shift+C`) → right-click → **Copy selector / JS path / XPath** | Generates brittle, deeply-nested paths. Anchors on **auto-generated IDs** that change every render in any modern framework (React, Vue, Svelte, …). Output is rarely the selector you want to ship. |
+| DevTools → **Add style rule** (e.g. `border: 1px solid red`) | Fragile scratch test; DOM edits/typo reset work. No match count/list. |
+| DevTools Console → `document.querySelectorAll(...)` | No on-page marks; grind through `NodeList` in Elements. Re-type each pass. |
+| Inspect → **Copy selector / XPath** | Deep paths; unstable auto-generated `id`s on framework remount. Rarely ship-ready. |
 
 ### Core problems
 
-- **Auto-generated IDs** · modern frameworks emit unstable `id` attributes; copied selectors break on the next mount.
-- **Long, brittle paths** · generated selectors describe the *path* to an element, not its *identity*. A short, intentional query is almost always better.
-- **No live feedback loop** · every existing flow is single-shot; refining a query means starting over.
+- **Volatile ids** · copied selectors often break across framework remounts.
+- **Brittle paths** · generated chains ≠ the query you maintain in CSS/JS tests.
+- **Single-shot tooling** · little on-page iterate → tighten loop without leaving the DOM.
 
 ## What it does
 
-A persistent input docked at the bottom of the page. As you type:
+Docked bottom input:
 
-- Matching elements are **highlighted live** on every keystroke.
-- A **Side Panel** lists each match with its tag, `id`, classes, attributes, and a snippet of inner text.
-- Clicking a match scrolls to and focuses the element.
-- Invalid selectors surface inline without disrupting state.
-
-The input and panel survive DOM mutations and page interaction · refine until the query is exactly what you want.
+- Highlights on each keystroke; Side Panel lists tag, id, classes, attrs, text snippet (**150** listed, **500** highlighted cap).
+- Row click → scroll + focus.
+- Invalid selectors → inline error; prior state intact until corrected.
 
 ## Install (unpacked)
 
@@ -44,24 +41,20 @@ The input and panel survive DOM mutations and page interaction · refine until t
 
 ## Usage
 
-| Action | Binding |
-| --- | --- |
-| Toggle REPL (input + Side Panel) | extension action |
-| Toggle selector input | **Alt+S** |
+`chrome://extensions/shortcuts` · **toolbar icon** (Live CSS Queries + Side Panel)
+
+| Action | Shortcuts label | Default |
+| --- | --- | --- |
+| Live CSS Queries + Side Panel | Toggle Live CSS Queries (+ Side Panel) | Toolbar only — bind on Shortcuts |
+| Input only | Toggle selector input | **Alt+S** |
 
 ## Limits
 
-- **150** matches listed in the Side Panel (additional matches are still highlighted).
-- Injection runs on `http(s)` and `file:` only; Chrome Web Store pages are blocked.
-- Closing the Side Panel does not close the in-page input.
-- Page reload / navigation fully deactivates the REPL.
+- Side Panel list cap **150**; highlight cap **500** (see above).
 
 ## Permissions
 
-- `activeTab` · operate on the active tab.
-- `scripting` · inject `content.js` on demand.
-- `sidePanel` · Side Panel UI.
-- `host_permissions: <all_urls>` · run on any site.
+MV3: `activeTab`, `scripting`, `sidePanel`; `host_permissions`: `<all_urls>`.
 
 ## License
 
