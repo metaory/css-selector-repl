@@ -183,7 +183,8 @@ document.addEventListener(
     if (!state.tabId) return;
     event.preventDefault();
     event.stopPropagation();
-    sendRuntime({ type: "debugger:reset", tabId: state.tabId });
+    const type = state.payload.selector?.trim() ? "debugger:reset" : "debugger:deactivate";
+    sendRuntime({ type, tabId: state.tabId });
   },
   true
 );

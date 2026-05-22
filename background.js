@@ -192,6 +192,11 @@ const messageHandlers = {
   "selector:hover-clear": forwardToTab,
   "debugger:reset": forwardToTab,
   "debugger:focus-input": forwardToTab,
+  "debugger:deactivate": (message, sender) => {
+    const tabId = message.tabId ?? sender?.tab?.id;
+    if (!isTabId(tabId)) return;
+    deactivateDebugger(tabId);
+  },
   "sidebar:init": (message, _sender, sendResponse) => {
     sendResponse(getTabState(message.tabId).payload);
   }

@@ -70,18 +70,26 @@ if (!globalThis.__csrepl_booted) {
     focusInput(input);
     return true;
   };
-  const clearInputOnEscape = (event) => {
+  const isInputEmpty = (input) => !(input instanceof HTMLInputElement) || !input.value.trim();
+  const requestDeactivate = () => {
+    chrome.runtime.sendMessage({ type: "debugger:deactivate" }, () => {
+      void chrome.runtime.lastError;
+    });
+  };
+  const handleEscape = (event) => {
     if (event.key !== "Escape") return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     event.preventDefault();
-    clearAndFocusInput(event.target);
+    event.stopPropagation();
+    const input = state.input;
+    if (!(input instanceof HTMLInputElement)) return requestDeactivate();
+    if (!isInputEmpty(input)) return clearAndFocusInput(input);
+    requestDeactivate();
   };
   const handleGlobalEscape = (event) => {
     if (event.key !== "Escape") return;
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.target === state.input) return;
-    if (!clearAndFocusInput()) return;
-    event.preventDefault();
-    event.stopPropagation();
+    handleEscape(event);
   };
   const stopInputEventPropagation = (event) => event.stopPropagation();
   const selectInputOnFocus = (event) => event.target.select();
@@ -198,7 +206,7 @@ if (!globalThis.__csrepl_booted) {
   };
 
   const inputListeners = [
-    ["keydown", clearInputOnEscape],
+    ["keydown", handleEscape],
     ["keydown", copyInputOnCtrlCWhenCollapsed],
     ["copy", () => showToast(TOAST_COPIED)],
     ["focus", selectInputOnFocus],
