@@ -26,6 +26,9 @@ if (!globalThis.__csrepl_booted) {
   const $ = document.querySelector.bind(document);
   const $id = document.getElementById.bind(document);
   const el = (tag) => document.createElement(tag);
+
+  document.fonts.load('800 26px "Baloo 2"');
+
   const getActiveIndex = () =>
     Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= 0
       ? state.hoveredIndex
