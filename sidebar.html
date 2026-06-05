@@ -8,13 +8,18 @@
     <link rel="stylesheet" href="tokens.css">
     <title>Live CSS Queries</title>
     <style>
-      :root { color-scheme: light dark; }
-      html, body { max-width: 100%; overflow-x: clip; }
+      :root {
+        color-scheme: light dark;
+      }
+      html, body {
+        max-width: 100%;
+        overflow-x: clip;
+      }
       body {
         margin: 0;
         color: var(--lcs-fg);
         font: 400 13px/1.3 "Baloo 2", system-ui, sans-serif;
-        background: var(--lcs-bg, #ffffff);
+        background: transparent;
 
         & #app {
           box-sizing: border-box;
@@ -30,9 +35,8 @@
               display: grid;
               gap: 10px;
               padding: 12px 14px;
-              border: 2px solid var(--lcs-accent);
               border-radius: 14px;
-              background: linear-gradient(145deg, var(--lcs-accent-soft), var(--lcs-soft));
+              background: var(--lcs-accent-soft);
               box-shadow: 0 4px 18px rgb(0 0 0 / 22%);
               overflow-wrap: anywhere;
             }
@@ -108,21 +112,18 @@
               flex-direction: column;
               gap: 6px;
               min-width: 0;
-              border: 2px solid transparent;
               border-radius: 12px;
               padding: 7px 8px;
-              background: var(--lcs-soft);
+              background: var(--lcs-sidebar-idle);
               cursor: pointer;
               transition: border-color 120ms ease, background 120ms ease;
 
               &:hover {
-                border-color: var(--lcs-accent);
-                background: var(--lcs-soft-strong);
+                background: var(--lcs-sidebar-hover);
               }
 
               &.is-active {
-                border-color: var(--lcs-accent);
-                background: var(--lcs-accent-soft);
+                background: var(--lcs-sidebar-active);
               }
             }
 

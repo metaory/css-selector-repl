@@ -3,8 +3,14 @@
   --lcs-fg: rgba(255, 255, 255, 0.92);
   --lcs-fade: rgba(240, 230, 250, 0.5);
   --lcs-accent: #52d1ff;
-  --lcs-accent-soft: rgba(82, 209, 255, 0.2);
-  --lcs-soft: rgba(255, 255, 255, 0.08);
+  --lcs-accent-soft: hsl(250deg 40% 20% / 80%);
+
+  --lcs-medium: hsl(290deg 10% 40% / 80%));
+
+  --lcs-sidebar-idle: hsl(290deg 20% 20% / 80%);
+  --lcs-sidebar-active: hsl(290deg 30% 10% / 80%);
+  --lcs-sidebar-hover: hsl(250deg 30% 20% / 80%);
+
   --lcs-soft-strong: rgba(255, 255, 255, 0.16);
   --lcs-highlight: #ff7a45;
   --lcs-backdrop: rgba(8, 3, 24, 0.3);

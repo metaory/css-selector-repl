@@ -1,4 +1,4 @@
-const { EMPTY_PAYLOAD, MSG, normalizePayload, send, isBareEscape, $id, el } = globalThis.LCS;
+const { MSG, normalizePayload, send, isBareEscape, $id, el } = globalThis.LCS;
 
 if (!globalThis.__lcs_booted) {
   globalThis.__lcs_booted = true;
@@ -15,6 +15,7 @@ if (!globalThis.__lcs_booted) {
   const inputStopEvents = ["keydown", "keyup"];
 
   const state = {
+    active: false,
     input: null,
     countNode: null,
     hits: [],
@@ -45,7 +46,10 @@ if (!globalThis.__lcs_booted) {
     for (const node of state.hits) node.removeAttribute(MATCH_ATTR);
   };
 
-  const sendUpdate = (payload) => send({ type: MSG.UPDATE, payload });
+  const sendUpdate = (payload) => {
+    if (!state.active) return;
+    send({ type: MSG.UPDATE, payload });
+  };
 
   const setCount = ({ visible = false, count = 0 } = {}) => {
     const node = state.countNode;
@@ -192,9 +196,9 @@ if (!globalThis.__lcs_booted) {
   };
 
   const close = () => {
+    state.active = false;
     if (state.input) state.input.value = "";
     setCount();
-    sendUpdate(EMPTY_PAYLOAD);
     if (state.toastTimer) clearTimeout(state.toastTimer);
     clearHits();
     $id(ROOT_ID)?.remove();
@@ -304,6 +308,7 @@ if (!globalThis.__lcs_booted) {
   };
 
   const open = () => {
+    state.active = true;
     const input = mount();
     evaluate(input.value);
     focusInput(input);

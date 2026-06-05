@@ -148,8 +148,11 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   void deleteTabState(tabId);
 });
 
+const shouldDeactivateOnUpdate = ({ status, url } = {}) =>
+  status === "loading" || typeof url === "string";
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo?.status !== "loading") return;
+  if (!shouldDeactivateOnUpdate(changeInfo)) return;
   if (!isTabId(tabId) || !isTabActive(tabId)) return;
   void deactivate(tabId);
 });
@@ -176,6 +179,7 @@ const messageHandlers = {
   [MSG.UPDATE]: async (message, sender) => {
     const tabId = sender?.tab?.id;
     if (!isTabId(tabId)) return;
+    if (!(await getTabState(tabId)).active) return;
     await setTabPayload(tabId, message.payload);
   },
   [MSG.DEACTIVATE]: async (message, sender) => {

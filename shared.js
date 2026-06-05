@@ -14,8 +14,13 @@ globalThis.LCS = {
     SIDEBAR_INIT: "lcs:sidebar-init"
   },
   normalizePayload: (payload) => ({ ...globalThis.LCS.EMPTY_PAYLOAD, ...(payload || {}) }),
-  send: (message, callback) =>
-    chrome.runtime.sendMessage(message, callback ?? (() => void chrome.runtime.lastError)),
+  send: (message, callback) => {
+    try {
+      chrome.runtime.sendMessage(message, callback ?? (() => void chrome.runtime.lastError));
+    } catch {
+      // extension context invalidated (reload or navigation)
+    }
+  },
   isBareEscape: (event) =>
     event.key === "Escape" && !event.altKey && !event.ctrlKey && !event.metaKey
 };
