@@ -1,12 +1,9 @@
-@import url("fonts.css");
-@import url("tokens.css");
-
-[data-csrepl-match][data-csrepl-match] {
+[data-lcs-match][data-lcs-match] {
   position: relative !important;
   visibility: visible !important;
   opacity: 1 !important;
-  background: var(--csrepl-bg) !important;
-  outline: 3px dashed var(--csrepl-highlight) !important;
+  background: var(--lcs-bg) !important;
+  outline: 3px dashed var(--lcs-highlight) !important;
   border-radius: 0 !important;
   outline-offset: 2px !important;
   z-index: 999 !important;
@@ -22,8 +19,8 @@
     border: none !important;
   }
 
-  &[data-csrepl-match="active"] {
-    outline: 6px solid var(--csrepl-accent) !important;
+  &[data-lcs-match="active"] {
+    outline: 6px solid var(--lcs-accent) !important;
     outline-offset: 0 !important;
     z-index: 9999 !important;
     border: none !important;
@@ -31,7 +28,7 @@
   }
 }
 
-#__csrepl_root__ {
+#__lcs_root__ {
   position: sticky;
   left: 0;
   right: 0;
@@ -40,7 +37,7 @@
   padding: 12px 40px;
   isolation: isolate;
 
-  & .__csrepl_row__ {
+  & .__lcs_row__ {
     display: flex;
     gap: 8px;
     align-items: center;
@@ -48,7 +45,7 @@
     outline: solid 4px white;
     border-radius: 18px;
     box-shadow: #ffffff99 0px 0px 32px, white 0px 0px 22px inset !important;
-    background: var(--csrepl-fade);
+    background: var(--lcs-fade);
     backdrop-filter: brightness(0.9) blur(20px);
   }
 
@@ -61,37 +58,37 @@
     padding: 10px 16px 10px;
     font: 800 26px / 1 "Baloo 2", system-ui, sans-serif;
     background: transparent;
-    color: var(--csrepl-bg);
+    color: var(--lcs-bg);
     direction: ltr;
     text-align: left;
-    caret-color: var(--csrepl-backdrop);
+    caret-color: var(--lcs-backdrop);
     caret-shape: block;
 
     &::placeholder {
-      color: var(--csrepl-bg);
+      color: var(--lcs-bg);
       opacity: 0.6;
       padding-left: 20px;
     }
     &::selection {
-      background: var(--csrepl-backdrop);
+      background: var(--lcs-backdrop);
       color: white;
     }
   }
 
-  & .__csrepl_count__ {
+  & .__lcs_count__ {
     min-width: 2.5ch;
     padding: 2px 8px 1px;
     border-radius: 999px;
     font: 800 26px / 1 "Baloo 2", system-ui, sans-serif;
-    color: var(--csrepl-bg);
-    background: var(--csrepl-fade);
+    color: var(--lcs-bg);
+    background: var(--lcs-fade);
     text-align: center;
     font-variant-numeric: tabular-nums;
     opacity: 0.9;
     user-select: none;
   }
 
-  & .__csrepl_copy_btn__ {
+  & .__lcs_copy_btn__ {
     margin-right: 12px;
     display: grid;
     place-items: center;
@@ -101,7 +98,7 @@
     opacity: .4;
     padding: 0;
     transition: all .4s ease;
-    background: var(--csrepl-fade);
+    background: var(--lcs-fade);
 
     &:hover {
       opacity: .8;
@@ -120,7 +117,7 @@
     }
   }
 
-  & .__csrepl_toast__ {
+  & .__lcs_toast__ {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 16px);
@@ -130,8 +127,8 @@
     text-align: center;
     font: 800 28px/1.12 "Baloo 2", system-ui, sans-serif;
     letter-spacing: 0.02em;
-    color: var(--csrepl-bg);
-    background: var(--csrepl-fade);
+    color: var(--lcs-bg);
+    background: var(--lcs-fade);
     backdrop-filter: brightness(0.9) blur(20px);
     outline: solid 4px white;
     box-shadow: 0 0 16px 4px white, inset 0 0 22px white;
@@ -144,7 +141,7 @@
     padding: 6px 12px;
     border-radius: 9px;
 
-    &.__csrepl_toast_show__ {
+    &.__lcs_toast_show__ {
       opacity: 1;
       transform: translate(-50%, 0);
     }

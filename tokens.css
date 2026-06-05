@@ -1,13 +1,13 @@
 :root {
-  --csrepl-bg: #220044;
-  --csrepl-fg: rgba(255, 255, 255, 0.92);
-  --csrepl-fade: rgba(240, 230, 250, 0.5);
-  --csrepl-accent: #52d1ff;
-  --csrepl-accent-soft: rgba(82, 209, 255, 0.2);
-  --csrepl-soft: rgba(255, 255, 255, 0.08);
-  --csrepl-soft-strong: rgba(255, 255, 255, 0.16);
-  --csrepl-highlight: #ff7a45;
-  --csrepl-backdrop: rgba(8, 3, 24, 0.3);
-  --csrepl-muted: rgba(255, 255, 255, 0.7);
-  --csrepl-error: #ff8a80;
+  --lcs-bg: #220044;
+  --lcs-fg: rgba(255, 255, 255, 0.92);
+  --lcs-fade: rgba(240, 230, 250, 0.5);
+  --lcs-accent: #52d1ff;
+  --lcs-accent-soft: rgba(82, 209, 255, 0.2);
+  --lcs-soft: rgba(255, 255, 255, 0.08);
+  --lcs-soft-strong: rgba(255, 255, 255, 0.16);
+  --lcs-highlight: #ff7a45;
+  --lcs-backdrop: rgba(8, 3, 24, 0.3);
+  --lcs-muted: rgba(255, 255, 255, 0.7);
+  --lcs-error: #ff8a80;
 }

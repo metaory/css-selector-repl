@@ -30,10 +30,16 @@ Selector work on a real DOM is iterative; most DevTools flows are one-shot.
 Docked bottom input:
 
 - Highlights on each keystroke; Side Panel lists tag, id, classes, attrs, text snippet (**150** listed, **500** highlighted cap).
-- Row click → scroll + focus.
+- Row click → scroll + focus; row hover → active highlight on page.
 - Invalid selectors → inline error; prior state intact until corrected.
+- Copy selector via docked button or **Ctrl/Cmd+C** when the input has no selection.
+- **Escape** clears a non-empty input; closes the tool when empty.
 
-## Install (unpacked)
+## Install
+
+**Chrome Web Store** — link TBD after publish.
+
+**Unpacked (development)**
 
 - Chrome → `chrome://extensions`
 - Enable **Developer mode**
@@ -48,13 +54,19 @@ Docked bottom input:
 | Live CSS Queries + Side Panel | Toggle Live CSS Queries (+ Side Panel) | Toolbar — bind on Shortcuts |
 | Toggle selector input | Toggle selector input | **Alt+S** |
 
+Both commands toggle on/off (action or shortcut again closes the panel and clears the UI).
+
 ## Limits
 
 - Side Panel list cap **150**; highlight cap **500** (see above).
 
 ## Permissions
 
-MV3: `sidePanel`, `storage` (session tab state). Content scripts inject via manifest `matches` (no broad host permissions).
+MV3: `sidePanel`, `storage` (session tab state). Content scripts inject via manifest `matches: <all_urls>` — no `host_permissions` key, but the store still asks you to justify broad page access. UI stays off until you toggle via action or **Alt+S**.
+
+## Privacy
+
+No data collection or off-device transmission. See [PRIVACY.md](PRIVACY.md).
 
 ## License
 
