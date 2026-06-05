@@ -33,7 +33,7 @@ Docked bottom input:
 - Row click → scroll + focus; row hover → active highlight on page.
 - Invalid selectors → inline error; prior state intact until corrected.
 - Copy selector via docked button or **Ctrl/Cmd+C** when the input has no selection.
-- **Escape** clears a non-empty input; closes the tool when empty.
+- **Escape** clears a non-empty input and focuses it; when empty, deactivates the tool. Works globally while the tool is open.
 
 ## Install
 

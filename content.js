@@ -20,7 +20,7 @@ const boot = () => {
   const MAX_MATCHES = 150;
   const MAX_HITS = 500;
   const inputStopEvents = ["keydown", "keyup"];
-  const log = (...args) => globalThis.__lcs_debug !== false && console.log("[LCS]", ...args);
+  const log = (...args) => globalThis.__lcs_debug === true && console.log("[LCS]", ...args);
 
   const state = {
     active: false,
@@ -83,15 +83,11 @@ const boot = () => {
     }
   };
 
-  const paintInspector = (payload) => {
-    if (!state.panel) return log("paint: no panel");
+  const refreshInspector = (payload) => {
+    if (!state.panel) return;
     renderInspector(state.panel, payload, state.selectedIndex);
     bindRowRefs();
     syncPanelRows();
-    log("paint", {
-      rows: state.panel.list?.querySelectorAll("li[data-index]").length,
-      hits: state.hits.length
-    });
   };
 
   const setCount = ({ visible = false, count = 0 } = {}) => {
@@ -122,20 +118,12 @@ const boot = () => {
   const isInputEmpty = (input) => !(input instanceof HTMLInputElement) || !input.value.trim();
   const sync = (active) => send({ type: MSG.SYNC, active });
 
-  const handleEscape = (event) => {
-    if (!isBareEscape(event)) return;
+  const onEscape = (event) => {
+    if (!state.active || !isBareEscape(event)) return;
     event.preventDefault();
-    event.stopPropagation();
-    const input = state.input;
-    if (!(input instanceof HTMLInputElement)) return close();
-    if (!isInputEmpty(input)) return clearAndFocusInput(input);
+    event.stopImmediatePropagation();
+    if (!isInputEmpty(state.input)) return clearAndFocusInput();
     close();
-  };
-
-  const handleGlobalEscape = (event) => {
-    if (!isBareEscape(event)) return;
-    if (event.target === state.input) return;
-    handleEscape(event);
   };
 
   const clearHits = () => {
@@ -215,11 +203,10 @@ const boot = () => {
   });
 
   const scrollHitIntoView = (node) => {
-    if (!isLive(node)) return log("scroll: dead node", node);
+    if (!isLive(node)) return;
     const hidden = !isShown(node);
     const target = hidden ? revealAnchor(node) : node;
     const root = document.scrollingElement;
-    const before = root?.scrollTop;
     target.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
     const rect = () => target.getBoundingClientRect();
     for (let parent = target.parentElement; parent; parent = parent.parentElement) {
@@ -228,7 +215,7 @@ const boot = () => {
       if (dy) parent.scrollTop += dy;
       if (dx) parent.scrollLeft += dx;
     }
-    if (!root) return log("scroll: no scrollingElement");
+    if (!root) return;
     const { bottom, right } = overlayInsets();
     const view = {
       top: 0,
@@ -240,7 +227,6 @@ const boot = () => {
     const { dy, dx } = revealIn(view, r);
     if (dy) root.scrollTop += dy;
     if (dx) root.scrollLeft += dx;
-    log("scroll", { hidden, target: target.tagName, dy, dx, scrollTop: { before, after: root.scrollTop } });
     return hidden;
   };
 
@@ -262,26 +248,6 @@ const boot = () => {
     return hitAt(Number(row.dataset.index));
   };
 
-  const resyncInspector = () => {
-    const selector = state.input?.value?.trim();
-    if (!selector) return;
-    const { matches, error } = selectNodes(selector);
-    if (error) return paintInspector(normalizePayload({ selector, error }));
-    const count = matches.length;
-    markHits(matches);
-    state.lastMatchCount = count;
-    setCount({ visible: true, count });
-    if (Number.isInteger(state.selectedIndex) && state.selectedIndex >= count) state.selectedIndex = null;
-    if (Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= count) state.hoveredIndex = null;
-    paintInspector(
-      normalizePayload({
-        selector,
-        count,
-        matches: matches.slice(0, MAX_MATCHES).map(toItem)
-      })
-    );
-  };
-
   const selectNodes = (selector) => {
     try {
       return {
@@ -293,32 +259,44 @@ const boot = () => {
     }
   };
 
-  const evaluate = (selector) => {
-    const prevCount = state.lastMatchCount;
-    clearHits();
-    if (!selector.trim()) {
+  const applySelector = (selector, { scrollOnFirst = false, clear = false } = {}) => {
+    const trimmed = `${selector ?? ""}`.trim();
+    const prevCount = clear ? state.lastMatchCount : 0;
+    if (clear) clearHits();
+    if (!trimmed) {
       setCount();
-      paintInspector(normalizePayload({ selector }));
+      refreshInspector(normalizePayload({ selector: trimmed }));
       return;
     }
-    const { matches, error } = selectNodes(selector);
+    const { matches, error } = selectNodes(trimmed);
     if (error) {
       setCount({ visible: true, count: 0 });
-      paintInspector(normalizePayload({ selector, error }));
+      refreshInspector(normalizePayload({ selector: trimmed, error }));
       return;
     }
     const count = matches.length;
     markHits(matches);
-    if (prevCount === 0 && count > 0) scrollHitIntoView(state.hits[0]);
+    if (scrollOnFirst && prevCount === 0 && count > 0) scrollHitIntoView(state.hits[0]);
     state.lastMatchCount = count;
     setCount({ visible: true, count });
-    paintInspector(
+    if (!clear) {
+      if (Number.isInteger(state.selectedIndex) && state.selectedIndex >= count) state.selectedIndex = null;
+      if (Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= count) state.hoveredIndex = null;
+    }
+    refreshInspector(
       normalizePayload({
-        selector,
+        selector: trimmed,
         count,
         matches: matches.slice(0, MAX_MATCHES).map(toItem)
       })
     );
+  };
+
+  const evaluate = (selector) => applySelector(selector, { scrollOnFirst: true, clear: true });
+  const resyncInspector = () => {
+    const selector = state.input?.value?.trim();
+    if (!selector) return;
+    applySelector(selector);
   };
 
   const close = () => {
@@ -370,7 +348,7 @@ const boot = () => {
       resyncInspector();
       node = hitAt(index);
     }
-    if (!isLive(node)) return log("phantom row", { index, hits: state.hits.length });
+    if (!isLive(node)) return;
     action(node, index);
   };
 
@@ -378,10 +356,8 @@ const boot = () => {
     target instanceof Element ? target.closest("li[data-index]") : null;
 
   const wirePanelList = (list) => {
-    if (!(list instanceof HTMLElement)) return log("wire: not an element", list);
-    if (list.dataset.lcsListReady === "1") return log("wire: already wired", list);
+    if (!(list instanceof HTMLElement) || list.dataset.lcsListReady === "1") return;
     list.dataset.lcsListReady = "1";
-    log("wire: panel list", { className: list.className, inDom: list.isConnected });
     list.addEventListener(
       "click",
       (event) => {
@@ -434,7 +410,6 @@ const boot = () => {
   };
 
   const inputListeners = [
-    ["keydown", handleEscape],
     ["keydown", copyInputOnCtrlCWhenCollapsed],
     ["copy", () => showToast(TOAST_COPIED)],
     ["focus", (event) => event.target.select()],
@@ -527,12 +502,12 @@ const boot = () => {
     if (!handler) return;
     handler(message);
   });
-  document.addEventListener("keydown", handleGlobalEscape, true);
+  document.addEventListener("keydown", onEscape, true);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden || !state.active) return;
     close();
   });
-  log("booted — disable with globalThis.__lcs_debug = false");
+  log("booted — enable with globalThis.__lcs_debug = true");
 };
 
 boot();

@@ -1,4 +1,6 @@
-const MSG = { TOGGLE: "lcs:toggle", CLOSE: "lcs:close", SYNC: "lcs:sync" };
+importScripts("shared.js");
+
+const { MSG } = globalThis.LCS;
 
 let activeTabId = null;
 
@@ -9,9 +11,15 @@ const sendTab = (tabId, message) => {
   chrome.tabs.sendMessage(tabId, message).catch(() => undefined);
 };
 
+const deactivateTab = (tabId) => {
+  if (!isTabId(tabId)) return;
+  if (activeTabId === tabId) activeTabId = null;
+  sendTab(tabId, { type: MSG.CLOSE });
+};
+
 const toggleTab = (tabId) => {
   if (!isTabId(tabId)) return;
-  if (activeTabId && activeTabId !== tabId) sendTab(activeTabId, { type: MSG.CLOSE });
+  if (activeTabId && activeTabId !== tabId) deactivateTab(activeTabId);
   sendTab(tabId, { type: MSG.TOGGLE });
 };
 
@@ -33,5 +41,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onUpdated.addListener((tabId, { status, url } = {}) => {
   if (activeTabId !== tabId) return;
-  if (status === "loading" || typeof url === "string") activeTabId = null;
+  if (status === "loading" || typeof url === "string") deactivateTab(tabId);
+});
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  if (activeTabId && activeTabId !== tabId) deactivateTab(activeTabId);
 });
