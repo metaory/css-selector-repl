@@ -6,6 +6,8 @@ globalThis.LCS = {
     SYNC: "lcs:sync"
   },
   normalizePayload: (payload) => ({ ...globalThis.LCS.EMPTY_PAYLOAD, ...(payload || {}) }),
+  truncate: (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s),
+  normText: (text = "") => `${text}`.trim().replace(/\s+/g, " "),
   send: (message, callback) => {
     try {
       chrome.runtime.sendMessage(message, callback ?? (() => void chrome.runtime.lastError));
@@ -29,10 +31,10 @@ if (typeof document !== "undefined") {
 
 (() => {
   const { LCS } = globalThis;
-  const truncate = (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s);
+  const { truncate, normText } = LCS;
   const fmtAttr = ([k, v]) => (v ? `${k}="${truncate(v, 24)}"` : k);
-  const normText = (text = "") => `${text}`.trim().replace(/\s+/g, " ");
   const chipDefs = [
+    (p) => (p.hidden ? [["hidden", "hidden"]] : []),
     (p) => [["tag", p.tag], ["id", p.id]],
     (p) => p.classes.map((value) => ["cls", value]),
     (p) => p.attrs.map((value) => ["attr", value]),
@@ -40,6 +42,7 @@ if (typeof document !== "undefined") {
   ];
 
   const toParts = (item) => ({
+    hidden: item.hidden,
     tag: item.tag,
     id: item.id ? `#${item.id}` : "",
     classes: (item.classes || []).map((c) => `.${c}`),
@@ -47,7 +50,7 @@ if (typeof document !== "undefined") {
     text: truncate(normText(item.text), 56)
   });
 
-  LCS.renderInspector = ({ meta, error, list }, payload, selectedIndex) => {
+  LCS.renderInspector = ({ meta, error, list }, payload, selectedIndex, hoveredIndex) => {
     const { el, mk, normalizePayload } = LCS;
     const { selector, count, matches, error: err } = normalizePayload(payload);
     if (!selector) {
@@ -68,6 +71,7 @@ if (typeof document !== "undefined") {
         const row = el("li");
         row.dataset.index = `${index}`;
         if (index === selectedIndex) row.classList.add("is-active");
+        if (index === hoveredIndex) row.classList.add("is-hovered");
         if (item.hidden) row.classList.add("is-hidden");
         const chips = chipDefs
           .flatMap((build) => build(toParts(item)))
@@ -75,11 +79,6 @@ if (typeof document !== "undefined") {
           .map(([kind, value]) =>
             mk("span", { className: `__lcs_chip__ __lcs_chip_${kind}__`, textContent: value })
           );
-        if (item.hidden) {
-          chips.unshift(
-            mk("span", { className: "__lcs_chip__ __lcs_chip_hidden__", textContent: "hidden" })
-          );
-        }
         row.append(mk("div", { className: "__lcs_row_chips__", children: chips }));
         return row;
       })

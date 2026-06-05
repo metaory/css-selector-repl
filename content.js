@@ -1,4 +1,5 @@
-const { MSG, normalizePayload, send, isBareEscape, $id, el, mk, renderInspector } = globalThis.LCS;
+const { MSG, normalizePayload, send, isBareEscape, $id, el, mk, renderInspector, normText, truncate } =
+  globalThis.LCS;
 
 const boot = () => {
   if (globalThis.__lcs_booted) return;
@@ -9,13 +10,11 @@ const boot = () => {
   const COUNT_CLASS = "__lcs_count__";
   const COPY_BTN_CLASS = "__lcs_copy_btn__";
   const PANEL_CLASS = "__lcs_panel__";
-  const PANEL_META_CLASS = "__lcs_panel_meta__";
   const PANEL_ERROR_CLASS = "__lcs_panel_error__";
   const PANEL_LIST_CLASS = "__lcs_panel_list__";
   const TOAST_CLASS = "__lcs_toast__";
   const TOAST_SHOW_CLASS = "__lcs_toast_show__";
   const HTML_ATTR = "data-lcs-active";
-  const OVERLAY_ATTR = "data-lcs-overlay";
   const MATCH_ATTR = "data-lcs-match";
   const MAX_MATCHES = 150;
   const MAX_HITS = 500;
@@ -85,8 +84,12 @@ const boot = () => {
 
   const refreshInspector = (payload) => {
     if (!state.panel) return;
-    renderInspector(state.panel, payload, state.selectedIndex);
+    renderInspector(state.panel, payload, state.selectedIndex, state.hoveredIndex);
     bindRowRefs();
+  };
+
+  const paintSelection = () => {
+    markHits();
     syncPanelRows();
   };
 
@@ -134,8 +137,6 @@ const boot = () => {
     state.lastMatchCount = 0;
   };
 
-  const compactText = (text) => text.replace(/\s+/g, " ").trim().slice(0, 80);
-
   const toItem = (node) => ({
     tag: node.tagName.toLowerCase(),
     id: node.id || "",
@@ -143,7 +144,7 @@ const boot = () => {
     attrs: [...node.attributes]
       .filter(({ name }) => name !== "id" && name !== "class" && name !== MATCH_ATTR)
       .map(({ name, value }) => [name, value]),
-    text: compactText(node.innerText || node.textContent || ""),
+    text: truncate(normText(node.innerText || node.textContent || ""), 80),
     hidden: !isShown(node)
   });
 
@@ -319,15 +320,13 @@ const boot = () => {
   const clearHover = () => {
     if (state.hoveredIndex === null) return;
     state.hoveredIndex = null;
-    markHits();
-    syncPanelRows();
+    paintSelection();
   };
 
   const focusNode = (node, index) => {
     state.hoveredIndex = null;
     state.selectedIndex = index;
-    markHits();
-    syncPanelRows();
+    paintSelection();
     requestAnimationFrame(() => {
       if (!isLive(node)) return;
       if (scrollHitIntoView(node)) showToast("Hidden match — open menu to reveal");
@@ -337,8 +336,7 @@ const boot = () => {
   const hoverNode = (_node, index) => {
     if (state.hoveredIndex === index) return;
     state.hoveredIndex = index;
-    markHits();
-    syncPanelRows();
+    paintSelection();
   };
 
   const actOnRow = (row, action) => {
@@ -429,7 +427,7 @@ const boot = () => {
   };
 
   const mountPanel = () => {
-    const meta = mk("div", { className: PANEL_META_CLASS });
+    const meta = mk("div");
     const panelError = mk("p", { className: PANEL_ERROR_CLASS, hidden: true });
     const list = mk("ul", { className: PANEL_LIST_CLASS });
     wirePanelList(list);
@@ -439,7 +437,6 @@ const boot = () => {
 
   const mountFresh = () => {
     const root = Object.assign(el("div"), { id: ROOT_ID });
-    root.setAttribute(OVERLAY_ATTR, "");
     state.root = root;
     const row = Object.assign(el("div"), { className: ROW_CLASS });
     const input = Object.assign(el("input"), {
