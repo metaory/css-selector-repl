@@ -1,18 +1,26 @@
-const { MSG, normalizePayload, send, isBareEscape, $id, el } = globalThis.LCS;
+const { MSG, normalizePayload, send, isBareEscape, $id, el, mk, renderInspector } = globalThis.LCS;
 
-if (!globalThis.__lcs_booted) {
+const boot = () => {
+  if (globalThis.__lcs_booted) return;
   globalThis.__lcs_booted = true;
 
   const ROOT_ID = "__lcs_root__";
   const ROW_CLASS = "__lcs_row__";
   const COUNT_CLASS = "__lcs_count__";
   const COPY_BTN_CLASS = "__lcs_copy_btn__";
+  const PANEL_CLASS = "__lcs_panel__";
+  const PANEL_META_CLASS = "__lcs_panel_meta__";
+  const PANEL_ERROR_CLASS = "__lcs_panel_error__";
+  const PANEL_LIST_CLASS = "__lcs_panel_list__";
   const TOAST_CLASS = "__lcs_toast__";
   const TOAST_SHOW_CLASS = "__lcs_toast_show__";
+  const HTML_ATTR = "data-lcs-active";
+  const OVERLAY_ATTR = "data-lcs-overlay";
   const MATCH_ATTR = "data-lcs-match";
   const MAX_MATCHES = 150;
   const MAX_HITS = 500;
   const inputStopEvents = ["keydown", "keyup"];
+  const log = (...args) => globalThis.__lcs_debug !== false && console.log("[LCS]", ...args);
 
   const state = {
     active: false,
@@ -22,10 +30,11 @@ if (!globalThis.__lcs_booted) {
     selectedIndex: null,
     hoveredIndex: null,
     toastTimer: 0,
-    lastMatchCount: 0
+    lastMatchCount: 0,
+    panel: null,
+    root: null
   };
-
-  const $ = document.querySelector.bind(document);
+  const rowRefs = new WeakMap();
 
   document.fonts.load('800 26px "Baloo 2"');
 
@@ -34,11 +43,17 @@ if (!globalThis.__lcs_booted) {
       ? state.hoveredIndex
       : state.selectedIndex;
 
-  const markHits = () => {
+  const markHits = (matches) => {
     const active = getActiveIndex();
-    for (const [i, node] of state.hits.entries()) {
-      if (!(node instanceof Element)) continue;
-      node.setAttribute(MATCH_ATTR, i === active ? "active" : "");
+    const prev = state.hits;
+    const next = (matches ?? queryMatches().matches).slice(0, MAX_HITS);
+    for (const node of prev) {
+      if (node instanceof Element && !next.includes(node)) node.removeAttribute(MATCH_ATTR);
+    }
+    state.hits = next;
+    for (const [i, hit] of state.hits.entries()) {
+      if (!isLive(hit)) continue;
+      hit.setAttribute(MATCH_ATTR, i === active ? "active" : "");
     }
   };
 
@@ -46,9 +61,37 @@ if (!globalThis.__lcs_booted) {
     for (const node of state.hits) node.removeAttribute(MATCH_ATTR);
   };
 
-  const sendUpdate = (payload) => {
-    if (!state.active) return;
-    send({ type: MSG.UPDATE, payload });
+  const reservePage = () => document.documentElement.setAttribute(HTML_ATTR, "");
+  const releasePage = () => document.documentElement.removeAttribute(HTML_ATTR);
+
+  const syncPanelRows = () => {
+    const list = state.panel?.list;
+    if (!(list instanceof HTMLElement)) return;
+    for (const row of list.querySelectorAll("li[data-index]")) {
+      const index = Number(row.dataset.index);
+      row.classList.toggle("is-active", index === state.selectedIndex);
+      row.classList.toggle("is-hovered", index === state.hoveredIndex);
+    }
+  };
+
+  const bindRowRefs = () => {
+    const list = state.panel?.list;
+    if (!(list instanceof HTMLElement)) return;
+    for (const row of list.querySelectorAll("li[data-index]")) {
+      const node = state.hits[Number(row.dataset.index)];
+      if (node) rowRefs.set(row, node);
+    }
+  };
+
+  const paintInspector = (payload) => {
+    if (!state.panel) return log("paint: no panel");
+    renderInspector(state.panel, payload, state.selectedIndex);
+    bindRowRefs();
+    syncPanelRows();
+    log("paint", {
+      rows: state.panel.list?.querySelectorAll("li[data-index]").length,
+      hits: state.hits.length
+    });
   };
 
   const setCount = ({ visible = false, count = 0 } = {}) => {
@@ -77,16 +120,16 @@ if (!globalThis.__lcs_booted) {
   };
 
   const isInputEmpty = (input) => !(input instanceof HTMLInputElement) || !input.value.trim();
-  const requestDeactivate = () => send({ type: MSG.DEACTIVATE });
+  const sync = (active) => send({ type: MSG.SYNC, active });
 
   const handleEscape = (event) => {
     if (!isBareEscape(event)) return;
     event.preventDefault();
     event.stopPropagation();
     const input = state.input;
-    if (!(input instanceof HTMLInputElement)) return requestDeactivate();
+    if (!(input instanceof HTMLInputElement)) return close();
     if (!isInputEmpty(input)) return clearAndFocusInput(input);
-    requestDeactivate();
+    close();
   };
 
   const handleGlobalEscape = (event) => {
@@ -110,13 +153,48 @@ if (!globalThis.__lcs_booted) {
     id: node.id || "",
     classes: [...node.classList],
     attrs: [...node.attributes]
-      .filter(({ name }) => name !== "id" && name !== "class")
+      .filter(({ name }) => name !== "id" && name !== "class" && name !== MATCH_ATTR)
       .map(({ name, value }) => [name, value]),
-    text: compactText(node.innerText || node.textContent || "")
+    text: compactText(node.innerText || node.textContent || ""),
+    hidden: !isShown(node)
   });
 
-  const isOverlayNode = (node) => node.id === ROOT_ID || node.closest(`#${ROOT_ID}`);
+  const isOverlayNode = (node) => {
+    const root = state.root;
+    return !!(root && node instanceof Element && (node === root || root.contains(node)));
+  };
   const isLive = (node) => node instanceof Element && node.isConnected;
+
+  const hasBox = (node) => {
+    const { width, height } = node.getBoundingClientRect();
+    return width > 0 || height > 0;
+  };
+
+  const isShown = (node) => {
+    if (!isLive(node) || !hasBox(node)) return false;
+    if (node.closest("[hidden]")) return false;
+    for (let p = node; p; p = p.parentElement) {
+      const s = getComputedStyle(p);
+      if (s.display === "none" || s.visibility === "hidden") return false;
+      if (Number(s.opacity) === 0) return false;
+    }
+    return true;
+  };
+
+  const revealAnchor = (node) => {
+    if (isShown(node)) return node;
+    const toggler = node.closest('[aria-expanded="false"]');
+    if (toggler instanceof Element && isShown(toggler)) return toggler;
+    const details = node.closest("details:not([open])");
+    if (details instanceof HTMLDetailsElement) {
+      const summary = details.querySelector("summary");
+      if (summary instanceof Element && isShown(summary)) return summary;
+    }
+    for (let p = node.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      if (isShown(p)) return p;
+    }
+    return node;
+  };
 
   const isScrollable = (node) => {
     if (!(node instanceof Element)) return false;
@@ -126,33 +204,82 @@ if (!globalThis.__lcs_booted) {
     return scrollY || scrollX;
   };
 
-  const scrollWithin = (container, node) => {
-    const nodeRect = node.getBoundingClientRect();
-    const box = container.getBoundingClientRect();
-    if (nodeRect.bottom > box.bottom) container.scrollTop += nodeRect.bottom - box.bottom;
-    if (nodeRect.top < box.top) container.scrollTop -= box.top - nodeRect.top;
-    if (nodeRect.right > box.right) container.scrollLeft += nodeRect.right - box.right;
-    if (nodeRect.left < box.left) container.scrollLeft -= box.left - nodeRect.left;
-  };
+  const overlayInsets = () => ({
+    bottom: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lcs-input-reserve")) || 0,
+    right: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lcs-panel-reserve")) || 0
+  });
+
+  const revealIn = (box, rect) => ({
+    dy: rect.top < box.top ? rect.top - box.top : rect.bottom > box.bottom ? rect.bottom - box.bottom : 0,
+    dx: rect.left < box.left ? rect.left - box.left : rect.right > box.right ? rect.right - box.right : 0
+  });
 
   const scrollHitIntoView = (node) => {
-    if (!isLive(node)) return;
-    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
-      if (isScrollable(parent)) scrollWithin(parent, node);
+    if (!isLive(node)) return log("scroll: dead node", node);
+    const hidden = !isShown(node);
+    const target = hidden ? revealAnchor(node) : node;
+    const root = document.scrollingElement;
+    const before = root?.scrollTop;
+    target.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+    const rect = () => target.getBoundingClientRect();
+    for (let parent = target.parentElement; parent; parent = parent.parentElement) {
+      if (!isScrollable(parent)) continue;
+      const { dy, dx } = revealIn(parent.getBoundingClientRect(), rect());
+      if (dy) parent.scrollTop += dy;
+      if (dx) parent.scrollLeft += dx;
     }
-    node.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+    if (!root) return log("scroll: no scrollingElement");
+    const { bottom, right } = overlayInsets();
+    const view = {
+      top: 0,
+      left: 0,
+      bottom: window.innerHeight - bottom,
+      right: window.innerWidth - right
+    };
+    const r = rect();
+    const { dy, dx } = revealIn(view, r);
+    if (dy) root.scrollTop += dy;
+    if (dx) root.scrollLeft += dx;
+    log("scroll", { hidden, target: target.tagName, dy, dx, scrollTop: { before, after: root.scrollTop } });
+    return hidden;
+  };
+
+  const queryMatches = () => {
+    const selector = state.input?.value?.trim();
+    if (!selector) return { matches: [], error: "" };
+    return selectNodes(selector);
   };
 
   const hitAt = (index) => {
-    const cached = state.hits[index];
-    if (isLive(cached)) return cached;
+    const { matches, error } = queryMatches();
+    if (error) return null;
+    return matches[index] ?? null;
+  };
+
+  const nodeForRow = (row) => {
+    const pinned = rowRefs.get(row);
+    if (isLive(pinned)) return pinned;
+    return hitAt(Number(row.dataset.index));
+  };
+
+  const resyncInspector = () => {
     const selector = state.input?.value?.trim();
-    if (!selector) return cached;
+    if (!selector) return;
     const { matches, error } = selectNodes(selector);
-    if (error) return cached;
-    const fresh = matches[index];
-    if (fresh) state.hits[index] = fresh;
-    return fresh ?? cached;
+    if (error) return paintInspector(normalizePayload({ selector, error }));
+    const count = matches.length;
+    markHits(matches);
+    state.lastMatchCount = count;
+    setCount({ visible: true, count });
+    if (Number.isInteger(state.selectedIndex) && state.selectedIndex >= count) state.selectedIndex = null;
+    if (Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= count) state.hoveredIndex = null;
+    paintInspector(
+      normalizePayload({
+        selector,
+        count,
+        matches: matches.slice(0, MAX_MATCHES).map(toItem)
+      })
+    );
   };
 
   const selectNodes = (selector) => {
@@ -171,22 +298,21 @@ if (!globalThis.__lcs_booted) {
     clearHits();
     if (!selector.trim()) {
       setCount();
-      sendUpdate(normalizePayload({ selector }));
+      paintInspector(normalizePayload({ selector }));
       return;
     }
     const { matches, error } = selectNodes(selector);
     if (error) {
       setCount({ visible: true, count: 0 });
-      sendUpdate(normalizePayload({ selector, error }));
+      paintInspector(normalizePayload({ selector, error }));
       return;
     }
     const count = matches.length;
-    state.hits = matches.slice(0, MAX_HITS);
-    markHits();
+    markHits(matches);
     if (prevCount === 0 && count > 0) scrollHitIntoView(state.hits[0]);
     state.lastMatchCount = count;
     setCount({ visible: true, count });
-    sendUpdate(
+    paintInspector(
       normalizePayload({
         selector,
         count,
@@ -196,7 +322,9 @@ if (!globalThis.__lcs_booted) {
   };
 
   const close = () => {
+    if (!state.active) return;
     state.active = false;
+    releasePage();
     if (state.input) state.input.value = "";
     setCount();
     if (state.toastTimer) clearTimeout(state.toastTimer);
@@ -204,21 +332,78 @@ if (!globalThis.__lcs_booted) {
     $id(ROOT_ID)?.remove();
     state.input = null;
     state.countNode = null;
+    state.panel = null;
+    state.root = null;
     state.toastTimer = 0;
+    sync(false);
   };
 
-  const focusByIndex = (index) => {
-    index = Number(index);
-    if (!Number.isInteger(index)) return;
-    const node = hitAt(index);
-    if (!isLive(node)) return;
+  const clearHover = () => {
+    if (state.hoveredIndex === null) return;
+    state.hoveredIndex = null;
+    markHits();
+    syncPanelRows();
+  };
+
+  const focusNode = (node, index) => {
+    state.hoveredIndex = null;
     state.selectedIndex = index;
     markHits();
-    scrollHitIntoView(node);
+    syncPanelRows();
+    requestAnimationFrame(() => {
+      if (!isLive(node)) return;
+      if (scrollHitIntoView(node)) showToast("Hidden match — open menu to reveal");
+    });
+  };
+
+  const hoverNode = (_node, index) => {
+    if (state.hoveredIndex === index) return;
+    state.hoveredIndex = index;
+    markHits();
+    syncPanelRows();
+  };
+
+  const actOnRow = (row, action) => {
+    const index = Number(row.dataset.index);
+    let node = nodeForRow(row);
+    if (!isLive(node)) {
+      resyncInspector();
+      node = hitAt(index);
+    }
+    if (!isLive(node)) return log("phantom row", { index, hits: state.hits.length });
+    action(node, index);
+  };
+
+  const rowFromTarget = (target) =>
+    target instanceof Element ? target.closest("li[data-index]") : null;
+
+  const wirePanelList = (list) => {
+    if (!(list instanceof HTMLElement)) return log("wire: not an element", list);
+    if (list.dataset.lcsListReady === "1") return log("wire: already wired", list);
+    list.dataset.lcsListReady = "1";
+    log("wire: panel list", { className: list.className, inDom: list.isConnected });
+    list.addEventListener(
+      "click",
+      (event) => {
+        const row = rowFromTarget(event.target);
+        if (!row) return;
+        actOnRow(row, focusNode);
+      },
+      true
+    );
+    list.addEventListener("pointerover", (event) => {
+      const row = rowFromTarget(event.target);
+      if (!row) return;
+      actOnRow(row, hoverNode);
+    });
+    list.addEventListener("pointerout", (event) => {
+      if (event.relatedTarget instanceof Element && list.contains(event.relatedTarget)) return;
+      clearHover();
+    });
   };
 
   const showToast = (message) => {
-    const toast = $(`#${ROOT_ID} .${TOAST_CLASS}`);
+    const toast = state.input?.parentElement?.querySelector(`.${TOAST_CLASS}`);
     if (!(toast instanceof HTMLElement)) return;
     toast.textContent = message;
     toast.classList.add(TOAST_SHOW_CLASS);
@@ -268,8 +453,19 @@ if (!globalThis.__lcs_booted) {
     return input;
   };
 
+  const mountPanel = () => {
+    const meta = mk("div", { className: PANEL_META_CLASS });
+    const panelError = mk("p", { className: PANEL_ERROR_CLASS, hidden: true });
+    const list = mk("ul", { className: PANEL_LIST_CLASS });
+    wirePanelList(list);
+    state.panel = { meta, error: panelError, list };
+    return mk("div", { className: PANEL_CLASS, children: [meta, panelError, list] });
+  };
+
   const mountFresh = () => {
     const root = Object.assign(el("div"), { id: ROOT_ID });
+    root.setAttribute(OVERLAY_ATTR, "");
+    state.root = root;
     const row = Object.assign(el("div"), { className: ROW_CLASS });
     const input = Object.assign(el("input"), {
       type: "text",
@@ -293,8 +489,8 @@ if (!globalThis.__lcs_booted) {
       Object.assign(el("img"), { src: chrome.runtime.getURL("assets/copy.svg"), alt: "" })
     );
     copyBtn.addEventListener("click", copySelector);
-    row.append(attachInputListeners(input), count, copyBtn);
-    root.append(row, Object.assign(el("div"), { className: TOAST_CLASS }));
+    row.append(attachInputListeners(input), count, copyBtn, mk("div", { className: TOAST_CLASS }));
+    root.append(row, mountPanel());
     document.body.append(root);
     state.input = input;
     state.countNode = count;
@@ -302,36 +498,28 @@ if (!globalThis.__lcs_booted) {
   };
 
   const mount = () => {
-    if (state.input) return state.input;
+    if (state.input?.isConnected && $id(ROOT_ID)) return state.input;
+    state.input = null;
+    state.panel = null;
+    state.root = null;
     $id(ROOT_ID)?.remove();
     return mountFresh();
   };
 
   const open = () => {
     state.active = true;
+    reservePage();
     const input = mount();
     evaluate(input.value);
     focusInput(input);
+    sync(true);
   };
 
+  const toggle = () => (state.active ? close() : open());
+
   const messageHandlers = {
-    [MSG.PING]: () => undefined,
-    [MSG.OPEN]: () => open(),
-    [MSG.FOCUS_INPUT]: () => focusInput(state.input || mount()),
-    [MSG.RESET]: () => clearAndFocusInput(),
-    [MSG.CLOSE]: () => close(),
-    [MSG.FOCUS]: (message) => focusByIndex(message.index),
-    [MSG.HOVER]: (message) => {
-      const index = Number(message.index);
-      if (!Number.isInteger(index) || !isLive(hitAt(index))) return;
-      state.hoveredIndex = index;
-      markHits();
-    },
-    [MSG.HOVER_CLEAR]: () => {
-      if (state.hoveredIndex === null) return;
-      state.hoveredIndex = null;
-      markHits();
-    }
+    [MSG.TOGGLE]: () => toggle(),
+    [MSG.CLOSE]: () => close()
   };
 
   chrome.runtime.onMessage.addListener((message) => {
@@ -340,4 +528,11 @@ if (!globalThis.__lcs_booted) {
     handler(message);
   });
   document.addEventListener("keydown", handleGlobalEscape, true);
-}
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden || !state.active) return;
+    close();
+  });
+  log("booted — disable with globalThis.__lcs_debug = false");
+};
+
+boot();
