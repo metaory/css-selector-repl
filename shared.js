@@ -5,6 +5,23 @@ globalThis.LCS = {
     CLOSE: "lcs:close",
     SYNC: "lcs:sync"
   },
+  CLS: {
+    root: "__lcs_root__",
+    row: "__lcs_row__",
+    count: "__lcs_count__",
+    copyBtn: "__lcs_copy_btn__",
+    panel: "__lcs_panel__",
+    panelError: "__lcs_panel_error__",
+    panelList: "__lcs_panel_list__",
+    panelMetaEmpty: "__lcs_panel_meta_empty__",
+    panelMetaHead: "__lcs_panel_meta_head__",
+    panelCount: "__lcs_panel_count__",
+    panelSelector: "__lcs_panel_selector__",
+    toast: "__lcs_toast__",
+    toastShow: "__lcs_toast_show__",
+    chip: "__lcs_chip__",
+    rowChips: "__lcs_row_chips__"
+  },
   normalizePayload: (payload) => ({ ...globalThis.LCS.EMPTY_PAYLOAD, ...(payload || {}) }),
   truncate: (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s),
   normText: (text = "") => `${text}`.trim().replace(/\s+/g, " "),
@@ -22,8 +39,9 @@ globalThis.LCS = {
 if (typeof document !== "undefined") {
   globalThis.LCS.$id = document.getElementById.bind(document);
   globalThis.LCS.el = (tag) => document.createElement(tag);
-  globalThis.LCS.mk = (tag, { children, ...props } = {}) => {
+  globalThis.LCS.mk = (tag, { children, dataset, ...props } = {}) => {
     const node = Object.assign(globalThis.LCS.el(tag), props);
+    if (dataset) Object.assign(node.dataset, dataset);
     if (children?.length) node.append(...children);
     return node;
   };
@@ -31,7 +49,7 @@ if (typeof document !== "undefined") {
 
 (() => {
   const { LCS } = globalThis;
-  const { truncate, normText } = LCS;
+  const { CLS, truncate, normText } = LCS;
   const fmtAttr = ([k, v]) => (v ? `${k}="${truncate(v, 24)}"` : k);
   const chipDefs = [
     (p) => (p.hidden ? [["hidden", "hidden"]] : []),
@@ -55,14 +73,14 @@ if (typeof document !== "undefined") {
     const { selector, count, matches, error: err } = normalizePayload(payload);
     if (!selector) {
       Object.assign(meta, {
-        className: "__lcs_panel_meta_empty__",
+        className: CLS.panelMetaEmpty,
         textContent: "No selector yet."
       });
     } else {
-      Object.assign(meta, { className: "__lcs_panel_meta_head__" });
+      Object.assign(meta, { className: CLS.panelMetaHead });
       meta.replaceChildren(
-        mk("span", { className: "__lcs_panel_count__", textContent: String(count) }),
-        mk("code", { className: "__lcs_panel_selector__", textContent: selector })
+        mk("span", { className: CLS.panelCount, textContent: String(count) }),
+        mk("code", { className: CLS.panelSelector, textContent: selector })
       );
     }
     Object.assign(error, { textContent: err, hidden: !err });
@@ -77,9 +95,9 @@ if (typeof document !== "undefined") {
           .flatMap((build) => build(toParts(item)))
           .filter(([, value]) => value)
           .map(([kind, value]) =>
-            mk("span", { className: `__lcs_chip__ __lcs_chip_${kind}__`, textContent: value })
+            mk("span", { className: CLS.chip, dataset: { kind }, textContent: value })
           );
-        row.append(mk("div", { className: "__lcs_row_chips__", children: chips }));
+        row.append(mk("div", { className: CLS.rowChips, children: chips }));
         return row;
       })
     );

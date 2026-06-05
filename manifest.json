@@ -30,8 +30,6 @@
         "<all_urls>"
       ],
       "css": [
-        "fonts.css",
-        "tokens.css",
         "content.css"
       ],
       "js": [

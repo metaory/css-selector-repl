@@ -1,23 +1,15 @@
-const { MSG, normalizePayload, send, isBareEscape, $id, el, mk, renderInspector, normText, truncate } =
+const { MSG, CLS, normalizePayload, send, isBareEscape, $id, el, mk, renderInspector, normText, truncate } =
   globalThis.LCS;
 
 const boot = () => {
   if (globalThis.__lcs_booted) return;
   globalThis.__lcs_booted = true;
 
-  const ROOT_ID = "__lcs_root__";
-  const ROW_CLASS = "__lcs_row__";
-  const COUNT_CLASS = "__lcs_count__";
-  const COPY_BTN_CLASS = "__lcs_copy_btn__";
-  const PANEL_CLASS = "__lcs_panel__";
-  const PANEL_ERROR_CLASS = "__lcs_panel_error__";
-  const PANEL_LIST_CLASS = "__lcs_panel_list__";
-  const TOAST_CLASS = "__lcs_toast__";
-  const TOAST_SHOW_CLASS = "__lcs_toast_show__";
   const HTML_ATTR = "data-lcs-active";
   const MATCH_ATTR = "data-lcs-match";
   const MAX_MATCHES = 150;
   const MAX_HITS = 500;
+  const SCROLLABLE = /auto|scroll|overlay/;
   const inputStopEvents = ["keydown", "keyup"];
   const log = (...args) => globalThis.__lcs_debug === true && console.log("[LCS]", ...args);
 
@@ -37,13 +29,11 @@ const boot = () => {
 
   document.fonts.load('800 26px "Baloo 2"');
 
-  const getActiveIndex = () =>
-    Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= 0
-      ? state.hoveredIndex
-      : state.selectedIndex;
-
   const markHits = (matches) => {
-    const active = getActiveIndex();
+    const active =
+      Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= 0
+        ? state.hoveredIndex
+        : state.selectedIndex;
     const prev = state.hits;
     const next = (matches ?? queryMatches().matches).slice(0, MAX_HITS);
     for (const node of prev) {
@@ -188,8 +178,8 @@ const boot = () => {
   const isScrollable = (node) => {
     if (!(node instanceof Element)) return false;
     const { overflowY, overflowX } = getComputedStyle(node);
-    const scrollY = /auto|scroll|overlay/.test(overflowY) && node.scrollHeight > node.clientHeight;
-    const scrollX = /auto|scroll|overlay/.test(overflowX) && node.scrollWidth > node.clientWidth;
+    const scrollY = SCROLLABLE.test(overflowY) && node.scrollHeight > node.clientHeight;
+    const scrollX = SCROLLABLE.test(overflowX) && node.scrollWidth > node.clientWidth;
     return scrollY || scrollX;
   };
 
@@ -308,7 +298,7 @@ const boot = () => {
     setCount();
     if (state.toastTimer) clearTimeout(state.toastTimer);
     clearHits();
-    $id(ROOT_ID)?.remove();
+    $id(CLS.root)?.remove();
     state.input = null;
     state.countNode = null;
     state.panel = null;
@@ -377,13 +367,13 @@ const boot = () => {
   };
 
   const showToast = (message) => {
-    const toast = state.input?.parentElement?.querySelector(`.${TOAST_CLASS}`);
+    const toast = state.input?.parentElement?.querySelector(`.${CLS.toast}`);
     if (!(toast instanceof HTMLElement)) return;
     toast.textContent = message;
-    toast.classList.add(TOAST_SHOW_CLASS);
+    toast.classList.add(CLS.toastShow);
     if (state.toastTimer) clearTimeout(state.toastTimer);
     state.toastTimer = setTimeout(() => {
-      toast.classList.remove(TOAST_SHOW_CLASS);
+      toast.classList.remove(CLS.toastShow);
       state.toastTimer = 0;
     }, 3_000);
   };
@@ -428,17 +418,17 @@ const boot = () => {
 
   const mountPanel = () => {
     const meta = mk("div");
-    const panelError = mk("p", { className: PANEL_ERROR_CLASS, hidden: true });
-    const list = mk("ul", { className: PANEL_LIST_CLASS });
+    const panelError = mk("p", { className: CLS.panelError, hidden: true });
+    const list = mk("ul", { className: CLS.panelList });
     wirePanelList(list);
     state.panel = { meta, error: panelError, list };
-    return mk("div", { className: PANEL_CLASS, children: [meta, panelError, list] });
+    return mk("div", { className: CLS.panel, children: [meta, panelError, list] });
   };
 
   const mountFresh = () => {
-    const root = Object.assign(el("div"), { id: ROOT_ID });
+    const root = Object.assign(el("div"), { id: CLS.root });
     state.root = root;
-    const row = Object.assign(el("div"), { className: ROW_CLASS });
+    const row = Object.assign(el("div"), { className: CLS.row });
     const input = Object.assign(el("input"), {
       type: "text",
       placeholder: "Type CSS selector...",
@@ -446,7 +436,7 @@ const boot = () => {
       spellcheck: false
     });
     const count = Object.assign(el("span"), {
-      className: COUNT_CLASS,
+      className: CLS.count,
       hidden: true,
       textContent: "0",
       ariaLabel: "Match count",
@@ -454,14 +444,14 @@ const boot = () => {
     });
     const copyBtn = Object.assign(el("button"), {
       type: "button",
-      className: COPY_BTN_CLASS,
+      className: CLS.copyBtn,
       ariaLabel: "Copy selector"
     });
     copyBtn.append(
       Object.assign(el("img"), { src: chrome.runtime.getURL("assets/copy.svg"), alt: "" })
     );
     copyBtn.addEventListener("click", copySelector);
-    row.append(attachInputListeners(input), count, copyBtn, mk("div", { className: TOAST_CLASS }));
+    row.append(attachInputListeners(input), count, copyBtn, mk("div", { className: CLS.toast }));
     root.append(row, mountPanel());
     document.body.append(root);
     state.input = input;
@@ -470,11 +460,11 @@ const boot = () => {
   };
 
   const mount = () => {
-    if (state.input?.isConnected && $id(ROOT_ID)) return state.input;
+    if (state.input?.isConnected && $id(CLS.root)) return state.input;
     state.input = null;
     state.panel = null;
     state.root = null;
-    $id(ROOT_ID)?.remove();
+    $id(CLS.root)?.remove();
     return mountFresh();
   };
 
@@ -497,7 +487,7 @@ const boot = () => {
   chrome.runtime.onMessage.addListener((message) => {
     const handler = messageHandlers[message?.type];
     if (!handler) return;
-    handler(message);
+    handler();
   });
   document.addEventListener("keydown", onEscape, true);
   document.addEventListener("visibilitychange", () => {
