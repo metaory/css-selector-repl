@@ -11,12 +11,8 @@
     "128": "icons/icon128.png"
   },
   "permissions": [
-    "activeTab",
-    "scripting",
-    "sidePanel"
-  ],
-  "host_permissions": [
-    "<all_urls>"
+    "sidePanel",
+    "storage"
   ],
   "commands": {
     "_execute_action": {
@@ -43,6 +39,7 @@
         "content.css"
       ],
       "js": [
+        "shared.js",
         "content.js"
       ],
       "run_at": "document_idle"
@@ -51,9 +48,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "assets/*",
-        "tokens.css",
-        "fonts.css"
+        "assets/copy.svg"
       ],
       "matches": [
         "<all_urls>"
@@ -71,4 +66,3 @@
     }
   }
 }
-
