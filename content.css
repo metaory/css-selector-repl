@@ -1,6 +1,9 @@
 html[data-lcs-active] {
   margin-inline-end: var(--lcs-panel-reserve) !important;
-  transition: margin-inline-end 180ms ease;
+  margin-block-end: var(--lcs-input-reserve) !important;
+  transition:
+    margin-inline-end 180ms ease,
+    margin-block-end 180ms ease;
 }
 
 [data-lcs-match][data-lcs-match] {
@@ -44,16 +47,14 @@ html[data-lcs-active] {
 
   & .__lcs_row__ {
     position: fixed;
-    left: 0;
+    inset-inline: 0;
     bottom: 0;
-    width: 100vw;
     box-sizing: border-box;
     display: flex;
     gap: 8px;
     align-items: center;
     direction: ltr;
     margin: 0;
-    padding: 10px 12px;
     border-radius: 0;
     pointer-events: auto;
     outline: solid 4px white;
