@@ -389,7 +389,7 @@ const boot = () => {
   const copySelector = () => copyToClipboard(state.input?.value?.trim() || "");
   const inputHasSelection = (input) => input.selectionStart !== input.selectionEnd;
   const copyInputOnCtrlCWhenCollapsed = (event) => {
-    if (event.code !== "KeyC" || event.altKey) return;
+    if (event.code !== "KeyC" || event.altKey || event.shiftKey) return;
     if (!event.ctrlKey && !event.metaKey) return;
     if (!(event.target instanceof HTMLInputElement)) return;
     if (inputHasSelection(event.target)) return;
