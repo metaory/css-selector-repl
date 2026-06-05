@@ -130,16 +130,12 @@ const focusPageInput = () =>
 
 const fetchInitial = () => {
   if (!state.tabId) return;
-  sendRuntime({ type: "sidebar:init", tabId: state.tabId }, (payload) => {
-    render(payload);
-    focusPageInput();
-  });
+  sendRuntime({ type: "sidebar:init", tabId: state.tabId }, (payload) => render(payload));
 };
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.tabId !== state.tabId) return;
   if (message.type === "selector:update") return render(message.payload);
-  if (message.type === "sidebar:opened") return focusPageInput();
 });
 
 listNode.addEventListener("click", (event) => {
@@ -170,10 +166,11 @@ listNode.addEventListener("mouseout", (event) => {
   setHoveredIndex(index);
 });
 
-chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+(async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   state.tabId = tab?.id || null;
   fetchInitial();
-});
+})();
 
 document.addEventListener(
   "keydown",
@@ -183,8 +180,12 @@ document.addEventListener(
     if (!state.tabId) return;
     event.preventDefault();
     event.stopPropagation();
-    const type = state.payload.selector?.trim() ? "debugger:reset" : "debugger:deactivate";
-    sendRuntime({ type, tabId: state.tabId });
+    if (!state.payload.selector?.trim()) {
+      sendRuntime({ type: "debugger:deactivate", tabId: state.tabId });
+      return;
+    }
+    sendRuntime({ type: "debugger:reset", tabId: state.tabId });
+    focusPageInput();
   },
   true
 );

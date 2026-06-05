@@ -36,10 +36,10 @@ if (!globalThis.__csrepl_booted) {
 
   const markHits = () => {
     const active = getActiveIndex();
-    state.hits.forEach((node, i) => {
-      if (!(node instanceof Element)) return;
+    for (const [i, node] of state.hits.entries()) {
+      if (!(node instanceof Element)) continue;
       node.setAttribute(MATCH_ATTR, i === active ? "active" : "");
-    });
+    }
   };
 
   const unmarkHits = () => {
@@ -117,8 +117,31 @@ if (!globalThis.__csrepl_booted) {
   });
 
   const isDebuggerNode = (node) => node.id === ROOT_ID || node.closest(`#${ROOT_ID}`);
-  const scrollHitIntoView = (node) =>
-    node?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+
+  const isScrollable = (node) => {
+    if (!(node instanceof Element)) return false;
+    const { overflowY, overflowX } = getComputedStyle(node);
+    const scrollY = /auto|scroll|overlay/.test(overflowY) && node.scrollHeight > node.clientHeight;
+    const scrollX = /auto|scroll|overlay/.test(overflowX) && node.scrollWidth > node.clientWidth;
+    return scrollY || scrollX;
+  };
+
+  const scrollWithin = (container, node) => {
+    const nodeRect = node.getBoundingClientRect();
+    const box = container.getBoundingClientRect();
+    if (nodeRect.bottom > box.bottom) container.scrollTop += nodeRect.bottom - box.bottom;
+    if (nodeRect.top < box.top) container.scrollTop -= box.top - nodeRect.top;
+    if (nodeRect.right > box.right) container.scrollLeft += nodeRect.right - box.right;
+    if (nodeRect.left < box.left) container.scrollLeft -= box.left - nodeRect.left;
+  };
+
+  const scrollHitIntoView = (node) => {
+    if (!(node instanceof Element)) return;
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      if (isScrollable(parent)) scrollWithin(parent, node);
+    }
+    node.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+  };
 
   const selectNodes = (selector) => {
     try {
@@ -129,6 +152,16 @@ if (!globalThis.__csrepl_booted) {
     } catch (error) {
       return { matches: [], error: error.message || "Invalid selector" };
     }
+  };
+
+  const hitAt = (index) => {
+    const selector = state.input?.value?.trim();
+    if (!selector) return state.hits[index];
+    const { matches, error } = selectNodes(selector);
+    if (error) return state.hits[index];
+    const fresh = matches[index];
+    if (fresh) state.hits[index] = fresh;
+    return fresh ?? state.hits[index];
   };
 
   const evaluate = (selector) => {
@@ -170,7 +203,7 @@ if (!globalThis.__csrepl_booted) {
 
   const focusByIndex = (index) => {
     if (!Number.isInteger(index)) return;
-    const node = state.hits[index];
+    const node = hitAt(index);
     if (!node) return;
     state.selectedIndex = index;
     markHits();
@@ -310,7 +343,7 @@ if (!globalThis.__csrepl_booted) {
   const open = () => {
     const input = mount();
     evaluate(input.value);
-    if (document.hasFocus()) focusInput(input);
+    focusInput(input);
   };
 
   const messageHandlers = {

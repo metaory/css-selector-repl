@@ -4,205 +4,221 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   if (tab) chrome.tabs.reload(tab.id);
 });
 
-const tabState = new Map();
-const emptyPayload = {
-  selector: "",
-  count: 0,
-  matches: [],
-  error: ""
-};
+const SESSION_KEY = "tabState";
+const emptyPayload = { selector: "", count: 0, matches: [], error: "" };
 const defaultTabState = { active: false, payload: { ...emptyPayload } };
+const activeNow = new Set();
+
 const enableActionSidebar = () =>
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => undefined);
 
 enableActionSidebar();
 chrome.runtime.onStartup.addListener(enableActionSidebar);
 
-const getActiveTab = () =>
-  chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => tab);
-
 const isTabId = (tabId) => Number.isInteger(tabId);
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const blockedUrlMatchers = [
-  /^https:\/\/chrome\.google\.com\/webstore/,
-  /^https:\/\/chromewebstore\.google\.com\//
-];
+const getAllTabState = async () => {
+  const { [SESSION_KEY]: data = {} } = await chrome.storage.session.get(SESSION_KEY);
+  return data;
+};
 
-const isInjectableUrl = (url) =>
-  typeof url === "string" &&
-  /^(https?:|file:)/.test(url) &&
-  !blockedUrlMatchers.some((re) => re.test(url));
+const getTabState = async (tabId) => {
+  const all = await getAllTabState();
+  return all[tabId] ?? defaultTabState;
+};
 
-const getTabUrl = (tabId) =>
-  isTabId(tabId)
-    ? chrome.tabs
-        .get(tabId)
-        .then((tab) => tab?.url)
-        .catch(() => undefined)
-    : Promise.resolve(undefined);
+const syncActiveNow = (tabId, active) => {
+  if (!isTabId(tabId)) return;
+  if (active) activeNow.add(tabId);
+  if (!active) activeNow.delete(tabId);
+};
 
-const sendTabMessage = (tabId, message) =>
-  isTabId(tabId)
-    ? new Promise((resolve) =>
-        chrome.tabs.sendMessage(tabId, message, () => resolve(!chrome.runtime.lastError))
-      )
-    : Promise.resolve(false);
+const hydrateActiveNow = async () => {
+  activeNow.clear();
+  const all = await getAllTabState();
+  for (const [id, state] of Object.entries(all)) {
+    if (state.active) activeNow.add(Number(id));
+  }
+};
 
-const injectContentScript = (tabId) =>
-  getTabUrl(tabId).then((url) =>
-    isInjectableUrl(url)
-      ? chrome.scripting
-          .executeScript({ target: { tabId }, world: "ISOLATED", files: ["content.js"] })
-          .catch(() => undefined)
-      : undefined
-  );
+void hydrateActiveNow();
+chrome.runtime.onStartup.addListener(() => void hydrateActiveNow());
 
-const ensureContentScript = (tabId) =>
-  isTabId(tabId)
-    ? sendTabMessage(tabId, { type: "debugger:ping" }).then((hasReceiver) =>
-        hasReceiver ? undefined : injectContentScript(tabId)
-      )
-    : Promise.resolve();
-
-const ensureDebuggerInput = (tabId) =>
-  isTabId(tabId)
-    ? ensureContentScript(tabId).then(() => sendTabMessage(tabId, { type: "debugger:open" }))
-    : Promise.resolve(false);
-
-const getTabState = (tabId) => tabState.get(tabId) || defaultTabState;
-
-const setTabState = (tabId, next) => {
+const setTabState = async (tabId, next) => {
   if (!isTabId(tabId)) return defaultTabState;
-  const current = getTabState(tabId);
-  const value = { ...current, ...next };
-  tabState.set(tabId, value);
+  const all = await getAllTabState();
+  const value = { ...(all[tabId] ?? defaultTabState), ...next };
+  if ("active" in next) syncActiveNow(tabId, next.active);
+  await chrome.storage.session.set({ [SESSION_KEY]: { ...all, [tabId]: value } });
   return value;
 };
 
-const setTabPayload = (tabId, payload) => {
+const deleteTabState = async (tabId) => {
+  activeNow.delete(tabId);
+  const all = await getAllTabState();
+  if (!(tabId in all)) return;
+  const { [tabId]: _, ...rest } = all;
+  await chrome.storage.session.set({ [SESSION_KEY]: rest });
+};
+
+const sendTabMessage = async (tabId, message) => {
+  if (!isTabId(tabId)) return false;
+  try {
+    await chrome.tabs.sendMessage(tabId, message);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const ensureContentScript = async (tabId, tries = 8) => {
+  if (!isTabId(tabId)) return false;
+  for (let i = 0; i < tries; i++) {
+    if (await sendTabMessage(tabId, { type: "debugger:ping" })) return true;
+    if (i < tries - 1) await wait(50);
+  }
+  return false;
+};
+
+const setTabPayload = async (tabId, payload) => {
   const normalizedPayload = { ...emptyPayload, ...(payload || {}) };
-  setTabState(tabId, { payload: normalizedPayload });
-  chrome.runtime.sendMessage({ type: "selector:update", payload: normalizedPayload, tabId }, () => {
-    void chrome.runtime.lastError;
-  });
+  await setTabState(tabId, { payload: normalizedPayload });
+  chrome.runtime.sendMessage(
+    { type: "selector:update", payload: normalizedPayload, tabId },
+    () => void chrome.runtime.lastError
+  );
   return normalizedPayload;
 };
 
-const setTabActive = (tabId, active) => {
-  setTabState(tabId, { active });
-  return active;
+const isTabActive = (tabId) => activeNow.has(tabId);
+
+const closeSidePanel = async (tabId) => {
+  if (!isTabId(tabId)) return;
+  try {
+    await chrome.sidePanel.close({ tabId });
+    return;
+  } catch {
+    // fall through
+  }
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (Number.isInteger(tab?.windowId)) await chrome.sidePanel.close({ windowId: tab.windowId });
+  } catch {
+    // ignore
+  }
 };
 
-const isTabActive = (tabId) => getTabState(tabId).active === true;
-
-const closeSidePanel = (tabId) => {
-  if (!isTabId(tabId)) return Promise.resolve();
-  return chrome.sidePanel.close({ tabId }).catch(() =>
-    chrome.tabs
-      .get(tabId)
-      .then((tab) =>
-        Number.isInteger(tab?.windowId)
-          ? chrome.sidePanel.close({ windowId: tab.windowId })
-          : undefined
-      )
-      .catch(() => undefined)
-  );
+const activateDebugger = async (tabId) => {
+  if (!isTabId(tabId)) return;
+  await setTabState(tabId, { active: true });
+  if (!(await ensureContentScript(tabId))) return;
+  await sendTabMessage(tabId, { type: "debugger:open" });
+  await sendTabMessage(tabId, { type: "debugger:focus-input" });
 };
 
-const openSidePanel = (tabId) =>
-  isTabId(tabId)
-    ? chrome.sidePanel.open({ tabId }).catch(() => undefined)
-    : Promise.resolve();
-
-const activateDebugger = (tabId) => {
-  if (!isTabId(tabId)) return Promise.resolve();
-  setTabActive(tabId, true);
-  return ensureDebuggerInput(tabId);
+const openSidePanelNow = (tabId) => {
+  if (!isTabId(tabId)) return;
+  void chrome.sidePanel.open({ tabId }).catch(() => undefined);
 };
 
-const activateDebuggerWithSidePanel = (tabId) => {
-  if (!isTabId(tabId)) return Promise.resolve();
-  void openSidePanel(tabId).catch(() => undefined);
-  return activateDebugger(tabId);
-};
-
-const deactivateDebugger = (tabId) => {
-  if (!isTabId(tabId)) return Promise.resolve();
-  setTabActive(tabId, false);
-  setTabPayload(tabId, emptyPayload);
-  return Promise.all([
+const deactivateDebugger = async (tabId) => {
+  if (!isTabId(tabId)) return;
+  await setTabState(tabId, { active: false });
+  await setTabPayload(tabId, emptyPayload);
+  await Promise.all([
     closeSidePanel(tabId),
-    ensureContentScript(tabId).then(() => sendTabMessage(tabId, { type: "debugger:close" }))
-  ]).catch(() => undefined);
+    ensureContentScript(tabId).then(
+      (ready) => ready && sendTabMessage(tabId, { type: "debugger:close" })
+    )
+  ]);
 };
-
-const toggleDebugger = (tabId, activate = activateDebugger) =>
-  isTabActive(tabId) ? deactivateDebugger(tabId) : activate(tabId);
 
 chrome.action.onClicked.addListener((tab) => {
-  toggleDebugger(tab?.id, activateDebuggerWithSidePanel);
+  const tabId = tab?.id;
+  if (!isTabId(tabId)) return;
+  if (isTabActive(tabId)) {
+    void deactivateDebugger(tabId);
+    return;
+  }
+  openSidePanelNow(tabId);
+  void activateDebugger(tabId);
 });
 
-const commandHandlers = {
-  "toggle-selector-input": () => getActiveTab().then((tab) => toggleDebugger(tab?.id))
-};
-
-chrome.commands.onCommand.addListener((command) => {
-  commandHandlers[command]?.();
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "toggle-selector-input") return;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tabId = tab?.id;
+  if (!isTabId(tabId)) return;
+  if (isTabActive(tabId)) return deactivateDebugger(tabId);
+  if (Number.isInteger(tab.windowId)) {
+    void chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => undefined);
+  }
+  await activateDebugger(tabId);
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  tabState.delete(tabId);
+  void deleteTabState(tabId);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (!isTabId(tabId)) return;
   if (changeInfo?.status !== "loading") return;
-  if (!isTabActive(tabId)) return;
-  deactivateDebugger(tabId);
+  void (async () => {
+    if (!isTabId(tabId) || !isTabActive(tabId)) return;
+    await deactivateDebugger(tabId);
+  })();
 });
 
 chrome.tabs.onActivated.addListener(({ tabId }) => {
   if (!isTabId(tabId)) return;
-  for (const [otherId, state] of tabState) {
-    if (otherId === tabId || !state.active) continue;
-    deactivateDebugger(otherId);
-  }
+  void (async () => {
+    const all = await getAllTabState();
+    for (const [otherId, state] of Object.entries(all)) {
+      if (Number(otherId) === tabId || !state.active) continue;
+      await deactivateDebugger(Number(otherId));
+    }
+  })();
 });
 
 chrome.sidePanel.onOpened.addListener((panel) => {
-  if (!isTabId(panel?.tabId)) return;
-  setTabActive(panel.tabId, true);
-  chrome.runtime.sendMessage({ type: "sidebar:opened", tabId: panel.tabId }, () =>
-    void chrome.runtime.lastError
-  );
+  const tabId = panel?.tabId;
+  if (!isTabId(tabId)) return;
+  void (async () => {
+    await setTabState(tabId, { active: true });
+    if (!(await ensureContentScript(tabId))) return;
+    await sendTabMessage(tabId, { type: "debugger:focus-input" });
+  })();
 });
 
-const forwardToTab = (message) =>
-  ensureContentScript(message.tabId).then(() => sendTabMessage(message.tabId, message));
+const forwardToTab = async (message) => {
+  if (!(await ensureContentScript(message.tabId))) return;
+  await sendTabMessage(message.tabId, message);
+};
 
 const messageHandlers = {
-  "selector:update": (message, sender) => {
+  "selector:update": async (message, sender) => {
     const tabId = sender?.tab?.id;
     if (!isTabId(tabId)) return;
-    setTabPayload(tabId, message.payload);
+    await setTabPayload(tabId, message.payload);
   },
   "selector:focus": forwardToTab,
   "selector:hover": forwardToTab,
   "selector:hover-clear": forwardToTab,
   "debugger:reset": forwardToTab,
   "debugger:focus-input": forwardToTab,
-  "debugger:deactivate": (message, sender) => {
+  "debugger:deactivate": async (message, sender) => {
     const tabId = message.tabId ?? sender?.tab?.id;
     if (!isTabId(tabId)) return;
-    deactivateDebugger(tabId);
+    await deactivateDebugger(tabId);
   },
-  "sidebar:init": (message, _sender, sendResponse) => {
-    sendResponse(getTabState(message.tabId).payload);
+  "sidebar:init": async (message, _sender, sendResponse) => {
+    sendResponse((await getTabState(message.tabId)).payload);
   }
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  messageHandlers[message?.type]?.(message, sender, sendResponse);
+  const handler = messageHandlers[message?.type];
+  if (!handler) return;
+  void handler(message, sender, sendResponse);
+  return message?.type === "sidebar:init";
 });
-

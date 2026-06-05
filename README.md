@@ -45,8 +45,8 @@ Docked bottom input:
 
 | Action | Shortcuts label | Default |
 | --- | --- | --- |
-| Live CSS Queries + Side Panel | Toggle Live CSS Queries (+ Side Panel) | Toolbar only — bind on Shortcuts |
-| Input only | Toggle selector input | **Alt+S** |
+| Live CSS Queries + Side Panel | Toggle Live CSS Queries (+ Side Panel) | Toolbar — bind on Shortcuts |
+| Toggle selector input | Toggle selector input | **Alt+S** |
 
 ## Limits
 
@@ -54,7 +54,7 @@ Docked bottom input:
 
 ## Permissions
 
-MV3: `activeTab`, `scripting`, `sidePanel`; `host_permissions`: `<all_urls>`.
+MV3: `sidePanel`, `storage` (session tab state). Content scripts inject via manifest `matches` (no broad host permissions).
 
 ## License
 
