@@ -3,20 +3,16 @@
   "minimum_chrome_version": "120",
   "name": "Live CSS Queries",
   "version": "1.0.0",
-  "description": "See live CSS selector results with instant highlights and a focused Side Panel match inspector",
+  "description": "See live CSS selector results with instant highlights and a focused match inspector",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": [
-    "sidePanel",
-    "storage"
-  ],
   "commands": {
     "_execute_action": {
-      "description": "Toggle Live CSS Queries (+ Side Panel)"
+      "description": "Toggle Live CSS Queries"
     },
     "toggle-selector-input": {
       "suggested_key": {
@@ -34,8 +30,6 @@
         "<all_urls>"
       ],
       "css": [
-        "fonts.css",
-        "tokens.css",
         "content.css"
       ],
       "js": [
@@ -55,9 +49,6 @@
       ]
     }
   ],
-  "side_panel": {
-    "default_path": "sidebar.html"
-  },
   "action": {
     "default_title": "Live CSS Queries",
     "default_icon": {

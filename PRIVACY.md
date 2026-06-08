@@ -14,7 +14,7 @@ When you toggle Live CSS Queries (toolbar action or keyboard shortcut), the exte
 
 - Run `document.querySelectorAll` and related DOM reads on the **active tab** to find selector matches
 - Inject a docked input and highlight styles on that tab
-- Show match metadata (tag, id, classes, attributes, text snippet) in the Side Panel
+- Show match metadata (tag, id, classes, attributes, text snippet) in an on-page match panel
 - Copy a selector string to your clipboard when you use the copy control
 
 The extension does **not** run this UI or evaluation until you explicitly toggle it on.
@@ -23,10 +23,10 @@ The extension does **not** run this UI or evaluation until you explicitly toggle
 
 | Data | Where | Duration |
 | --- | --- | --- |
-| Per-tab active state and selector payload | `chrome.storage.session` | Until the browser session ends |
+| Active tab id (which tab has the tool open) | In-memory in the extension service worker | Until the browser restarts |
 | Match list and highlights | In-memory in the tab | Cleared when you close the tool or the tab |
 
-We do not use `chrome.storage.sync`. Nothing is synced to Google account storage by this extension.
+Nothing is written to disk or synced to Google account storage by this extension.
 
 ## What is not collected
 
@@ -37,8 +37,6 @@ We do not use `chrome.storage.sync`. Nothing is synced to Google account storage
 
 ## Permissions (why they exist)
 
-- **sidePanel** — display the match inspector
-- **storage (session)** — remember active state per tab during the browser session
 - **Content scripts on web pages** — evaluate selectors on origins you open; inactive until you toggle the tool
 
 ## Children
