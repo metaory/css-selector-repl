@@ -1,6 +1,7 @@
 <div align="center">
   <img src="icons/icon128.png" width="96" height="96" alt="Live CSS Queries logo">
   <h1>Live CSS Queries</h1>
+  <img src="assets/social.jpg" width="80%" alt="Live CSS Queries logo">
   <p><strong>See live CSS selector results with instant highlights</strong></p>
   <p>Inspect matches in a narrow on-page panel while you refine selectors in place</p>
 </div>
