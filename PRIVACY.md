@@ -2,22 +2,22 @@
 
 **Last updated:** June 5, 2026
 
-Live CSS Queries is a Chrome extension for evaluating CSS selectors on pages you open. This policy describes how the extension handles information.
+Live CSS Queries evaluates CSS selectors on pages you open.
 
 ## Summary
 
-**We do not collect, sell, or transfer your personal data.** Selector evaluation runs locally in your browser. Nothing is sent to our servers — we operate no servers for this extension.
+**We do not collect, sell, or transfer your personal data.** Selector evaluation runs in your browser. We run no servers for this extension.
 
 ## What the extension accesses
 
-When you toggle Live CSS Queries (toolbar action or keyboard shortcut), the extension may:
+After you toggle Live CSS Queries (toolbar action or keyboard shortcut), the extension:
 
-- Run `document.querySelectorAll` and related DOM reads on the **active tab** to find selector matches
-- Inject a docked input and highlight styles on that tab
-- Show match metadata (tag, id, classes, attributes, text snippet) in an on-page match panel
-- Copy a selector string to your clipboard when you use the copy control
+- Runs `document.querySelectorAll` and related DOM reads on the **active tab** to find selector matches
+- Injects a docked input and highlight styles on that tab
+- Shows match metadata (tag, id, classes, attributes, text snippet) in an on-page match panel
+- Copies a selector string to your clipboard when you use the copy control
 
-The extension does **not** run this UI or evaluation until you explicitly toggle it on.
+The UI and evaluation stay off until you toggle the tool on.
 
 ## What is stored
 
@@ -45,7 +45,7 @@ This extension is a developer tool and is not directed at children under 13.
 
 ## Changes
 
-Material changes to this policy will be reflected in this file and noted by updating the date above.
+We update the date above when this policy changes.
 
 ## Contact
 
