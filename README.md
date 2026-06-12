@@ -28,7 +28,17 @@ You iterate selectors on the live DOM.
 
 ## Install
 
-**Chrome Web Store:** link TBD after publish.
+
+<div align="center">
+  <a href="https://chromewebstore.google.com/detail/live-css-queries/placeholder"><s>Install from the Chrome Web Store</s><b>under review</b></a>
+  <br>
+  <a href="https://chromewebstore.google.com/detail/live-css-queries/placeholder">
+    <img src="assets/chromewebstore.png" width="280" alt="Available in the Chrome Web Store">
+  </a>
+</div>
+
+## Development
+
 
 **Unpacked (development)**
 
