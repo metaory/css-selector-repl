@@ -3,7 +3,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("assets/fonts/baloo-2-latin-600-normal.woff2") format("woff2");
+  src: url("chrome-extension://__MSG_@@extension_id__/assets/fonts/baloo-2-latin-600-normal.woff2") format("woff2");
 }
 
 @font-face {

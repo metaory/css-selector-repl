@@ -27,7 +27,7 @@ const boot = () => {
   };
   const rowRefs = new WeakMap();
 
-  document.fonts.load('800 26px "Baloo 2"');
+  document.fonts.load('800 26px "Baloo 2"').catch(() => {});
 
   const markHits = (matches) => {
     const active =
