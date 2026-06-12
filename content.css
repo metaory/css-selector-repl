@@ -11,7 +11,7 @@
   font-style: normal;
   font-weight: 800;
   font-display: swap;
-  src: url("assets/fonts/baloo-2-latin-800-normal.woff2") format("woff2");
+  src: url("chrome-extension://__MSG_@@extension_id__/assets/fonts/baloo-2-latin-800-normal.woff2") format("woff2");
 }
 
 :root {
@@ -56,15 +56,15 @@
   --lcs-chip-attr-bg: rgb(from var(--lcs-attr) r g b / 22%);
 
   /* layout · base */
-  --lcs-radius: 12px;
+  --lcs-radius: 18px;
   --lcs-ease: 180ms ease;
   --lcs-panel-font: 13px;
   --lcs-panel-width: 260px;
   --lcs-panel-inset: 8px;
-  --lcs-input-reserve: 60px;
+  --lcs-input-reserve: 40px;
 
   /* layout · derived */
-  --lcs-panel-reserve: calc(var(--lcs-panel-width) + var(--lcs-panel-inset) * 2);
+  --lcs-panel-reserve: var(--lcs-panel-width);
 }
 
 html[data-lcs-active] {
@@ -116,6 +116,7 @@ html[data-lcs-active] {
     inset-inline: 0;
     bottom: 0;
     box-sizing: border-box;
+    z-index: 99;
     display: flex;
     gap: 8px;
     align-items: center;
@@ -123,7 +124,7 @@ html[data-lcs-active] {
     margin: 0;
     border-radius: 0;
     pointer-events: auto;
-    outline: solid 4px var(--lcs-fg);
+    outline: solid 6px var(--lcs-fg);
     background: var(--lcs-fade);
     backdrop-filter: blur(12px);
     box-shadow: var(--lcs-glow) 0 0 32px, var(--lcs-fg) 0 0 22px inset;
@@ -229,20 +230,19 @@ html[data-lcs-active] {
 
   & .__lcs_panel__ {
     position: fixed;
-    top: var(--lcs-panel-inset);
-    right: var(--lcs-panel-inset);
-    bottom: var(--lcs-input-reserve);
+    top: 0;
+    right: 0;
+    bottom: 0;
     pointer-events: auto;
     width: var(--lcs-panel-width);
     box-sizing: border-box;
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr);
     gap: 4px;
-    padding: 4px;
-    border-radius: var(--lcs-radius);
+    padding: 4px 6px;
     color: var(--lcs-fg);
     font: 600 var(--lcs-panel-font) / 1.25;
-    background: var(--lcs-surface);
+    background: var(--lcs-fade);
     backdrop-filter: brightness(0.85) blur(16px);
     box-shadow: 0 4px 18px var(--lcs-shadow);
     overflow: hidden;
