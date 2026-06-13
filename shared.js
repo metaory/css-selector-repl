@@ -27,9 +27,10 @@ globalThis.LCS = {
   normText: (text = "") => `${text}`.trim().replace(/\s+/g, " "),
   send: (message, callback) => {
     try {
+      if (!chrome.runtime?.id) return;
       chrome.runtime.sendMessage(message, callback ?? (() => void chrome.runtime.lastError));
     } catch {
-      // extension context invalidated (reload or navigation)
+      /* stale content script after extension reload */
     }
   },
   isBareEscape: (event) =>
@@ -47,7 +48,7 @@ if (typeof document !== "undefined") {
   };
 }
 
-(() => {
+{
   const { LCS } = globalThis;
   const { CLS, truncate, normText } = LCS;
   const fmtAttr = ([k, v]) => (v ? `${k}="${truncate(v, 24)}"` : k);
@@ -84,22 +85,29 @@ if (typeof document !== "undefined") {
       );
     }
     Object.assign(error, { textContent: err, hidden: !err });
+    const indexed = matches.map((item, index) => ({ item, index }));
+    const sections = [false, true]
+      .map((hidden) => indexed.filter(({ item }) => item.hidden === hidden))
+      .filter((section) => section.length);
     list.replaceChildren(
-      ...matches.map((item, index) => {
-        const row = el("li");
-        row.dataset.index = `${index}`;
-        if (index === selectedIndex) row.classList.add("is-active");
-        if (index === hoveredIndex) row.classList.add("is-hovered");
-        if (item.hidden) row.classList.add("is-hidden");
-        const chips = chipDefs
-          .flatMap((build) => build(toParts(item)))
-          .filter(([, value]) => value)
-          .map(([kind, value]) =>
-            mk("span", { className: CLS.chip, dataset: { kind }, textContent: value })
-          );
-        row.append(mk("div", { className: CLS.rowChips, children: chips }));
-        return row;
-      })
+      ...sections.flatMap((section, sectionIndex) => [
+        ...(sectionIndex ? [mk("li", { ariaHidden: "true", children: [el("hr")] })] : []),
+        ...section.map(({ item, index }) => {
+          const row = el("li");
+          row.dataset.index = `${index}`;
+          if (index === selectedIndex) row.classList.add("is-active");
+          if (index === hoveredIndex) row.classList.add("is-hovered");
+          if (item.hidden) row.classList.add("is-hidden");
+          const chips = chipDefs
+            .flatMap((build) => build(toParts(item)))
+            .filter(([, value]) => value)
+            .map(([kind, value]) =>
+              mk("span", { className: CLS.chip, dataset: { kind }, textContent: value })
+            );
+          row.append(mk("div", { className: CLS.rowChips, children: chips }));
+          return row;
+        })
+      ])
     );
   };
-})();
+}
