@@ -90,7 +90,6 @@ html[data-lcs-active] {
   z-index: 999 !important;
   border: none !important;
   filter: sepia(1) saturate(2) hue-rotate(90deg) !important;
-  transition: all 0.3s ease !important;
   color: var(--lcs-fg) !important;
 
   &::before,
@@ -326,8 +325,7 @@ html[data-lcs-active] {
       font: 600 1em / 1.35 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       overflow-wrap: anywhere;
       word-break: break-word;
-      padding-top: 6px;
-      align-self: end;
+      align-self: center;
     }
 
     & .__lcs_panel_error__ {

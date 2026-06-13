@@ -9,6 +9,7 @@ const boot = () => {
   const MATCH_ATTR = "data-lcs-match";
   const MAX_MATCHES = 150;
   const MAX_HITS = 500;
+  const EVAL_DEBOUNCE_MS = 200;
   const SCROLLABLE = /auto|scroll|overlay/;
   const inputStopEvents = ["keydown", "keyup"];
   const log = (...args) => globalThis.__lcs_debug === true && console.log("[LCS]", ...args);
@@ -21,6 +22,8 @@ const boot = () => {
     selectedIndex: null,
     hoveredIndex: null,
     toastTimer: 0,
+    evaluateTimer: 0,
+    evalGen: 0,
     lastMatchCount: 0,
     panel: null,
     root: null
@@ -36,8 +39,9 @@ const boot = () => {
         : state.selectedIndex;
     const prev = state.hits;
     const next = (matches ?? queryMatches().matches).slice(0, MAX_HITS);
+    const nextSet = new Set(next);
     for (const node of prev) {
-      if (node instanceof Element && !next.includes(node)) node.removeAttribute(MATCH_ATTR);
+      if (node instanceof Element && !nextSet.has(node)) node.removeAttribute(MATCH_ATTR);
     }
     state.hits = next;
     for (const [i, hit] of state.hits.entries()) {
@@ -103,7 +107,7 @@ const boot = () => {
   const clearAndFocusInput = (input = state.input) => {
     if (!(input instanceof HTMLInputElement)) return false;
     input.value = "";
-    evaluate("");
+    evaluateNow("");
     focusInput(input);
     return true;
   };
@@ -250,16 +254,19 @@ const boot = () => {
     }
   };
 
-  const applySelector = (selector, { scrollOnFirst = false, clear = false } = {}) => {
+  const applySelector = (selector, { scrollOnFirst = false, clear = false, gen = null } = {}) => {
+    const stale = () => gen != null && (gen !== state.evalGen || !state.active);
     const trimmed = `${selector ?? ""}`.trim();
     const prevCount = clear ? state.lastMatchCount : 0;
     if (clear) clearHits();
+    if (stale()) return;
     if (!trimmed) {
       setCount();
       refreshInspector(normalizePayload({ selector: trimmed }));
       return;
     }
     const { matches, error } = selectNodes(trimmed);
+    if (stale()) return;
     if (error) {
       setCount({ visible: true, count: 0 });
       refreshInspector(normalizePayload({ selector: trimmed, error }));
@@ -267,13 +274,16 @@ const boot = () => {
     }
     const count = matches.length;
     markHits(matches);
+    if (stale()) return;
     if (scrollOnFirst && prevCount === 0 && count > 0) scrollHitIntoView(state.hits[0]);
+    if (stale()) return;
     state.lastMatchCount = count;
     setCount({ visible: true, count });
     if (!clear) {
       if (Number.isInteger(state.selectedIndex) && state.selectedIndex >= count) state.selectedIndex = null;
       if (Number.isInteger(state.hoveredIndex) && state.hoveredIndex >= count) state.hoveredIndex = null;
     }
+    if (stale()) return;
     refreshInspector(
       normalizePayload({
         selector: trimmed,
@@ -283,7 +293,33 @@ const boot = () => {
     );
   };
 
-  const evaluate = (selector) => applySelector(selector, { scrollOnFirst: true, clear: true });
+  const runEval = (selector, gen) => applySelector(selector, { scrollOnFirst: true, clear: true, gen });
+
+  const bumpEval = () => ++state.evalGen;
+
+  const cancelScheduledEval = () => {
+    if (!state.evaluateTimer) return;
+    clearTimeout(state.evaluateTimer);
+    state.evaluateTimer = 0;
+  };
+
+  const evaluateNow = (selector) => {
+    cancelScheduledEval();
+    runEval(selector, bumpEval());
+  };
+
+  const scheduleEvaluate = () => {
+    cancelScheduledEval();
+    bumpEval();
+    state.evaluateTimer = setTimeout(() => {
+      state.evaluateTimer = 0;
+      const gen = state.evalGen;
+      setTimeout(() => {
+        if (gen !== state.evalGen || !state.active) return;
+        runEval(state.input?.value ?? "", gen);
+      }, 0);
+    }, EVAL_DEBOUNCE_MS);
+  };
   const resyncInspector = () => {
     const selector = state.input?.value?.trim();
     if (!selector) return;
@@ -297,6 +333,8 @@ const boot = () => {
     if (state.input) state.input.value = "";
     setCount();
     if (state.toastTimer) clearTimeout(state.toastTimer);
+    cancelScheduledEval();
+    bumpEval();
     clearHits();
     $id(CLS.root)?.remove();
     state.input = null;
@@ -400,8 +438,7 @@ const boot = () => {
   const inputListeners = [
     ["keydown", copyInputOnCtrlCWhenCollapsed],
     ["copy", () => showToast(TOAST_COPIED)],
-    ["focus", (event) => event.target.select()],
-    ["input", (event) => evaluate(event.target.value)]
+    ["input", scheduleEvaluate]
   ];
 
   const attachInputListeners = (input) => {
@@ -472,7 +509,7 @@ const boot = () => {
     state.active = true;
     reservePage();
     const input = mount();
-    evaluate(input.value);
+    evaluateNow(input.value);
     focusInput(input);
     sync(true);
   };
