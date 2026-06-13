@@ -40,8 +40,8 @@
   --lcs-ink: rgb(from var(--lcs-bg) r g b / 30%);
   --lcs-muted: rgb(from var(--lcs-fg) r g b / 70%);
   --lcs-glow: rgb(from var(--lcs-fg) r g b / 60%);
-  --lcs-border: rgb(from var(--lcs-fg) r g b / 18%);
-  --lcs-overlay: rgb(from black r g b / 18%);
+  --lcs-border: rgb(from var(--lcs-fg) r g b / 20%);
+  --lcs-overlay: rgb(from white r g b / 20%);
   --lcs-overlay-strong: rgb(from black r g b / 24%);
   --lcs-shadow: rgb(from black r g b / 28%);
 
@@ -134,7 +134,7 @@ html[data-lcs-active] {
     outline: solid 6px var(--lcs-fg);
     background: var(--lcs-fade);
     backdrop-filter: blur(12px);
-    box-shadow: var(--lcs-glow) 0 0 32px, var(--lcs-fg) 0 0 22px inset;
+    box-shadow: var(--lcs-glow) 0 0 36px 6px, var(--lcs-overlay) 0 0 22px inset;
   }
 
   & input {
@@ -243,8 +243,9 @@ html[data-lcs-active] {
     pointer-events: auto;
     width: var(--lcs-panel-width);
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: auto auto auto;
+    align-content: start;
     gap: 4px;
     padding: 4px 6px;
     color: var(--lcs-fg);
@@ -281,7 +282,6 @@ html[data-lcs-active] {
     & > * {
       position: relative;
       z-index: 1;
-      flex-shrink: 0;
     }
 
     & .__lcs_panel_meta_empty__ {
@@ -299,12 +299,13 @@ html[data-lcs-active] {
       top: 0;
       z-index: 2;
       border-radius: 8px;
-      background: var(--lcs-overlay);
+      background: var(--lcs-overlay-strong);
       backdrop-filter: blur(12px);
     }
 
     & .__lcs_panel_meta_head__ {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr;
       align-items: center;
       gap: 6px;
       padding: 5px 6px;
@@ -312,26 +313,26 @@ html[data-lcs-active] {
     }
 
     & .__lcs_panel_count__ {
-      flex: none;
       min-width: 1.6em;
       padding: 2px 5px;
       border-radius: 6px;
       color: var(--lcs-accent);
-      background: var(--lcs-overlay);
+      background: var(--lcs-overlay-strong);
       font: 800 1em / 1.2;
       font-variant-numeric: tabular-nums;
+      font-weight: bold;
       text-align: center;
     }
 
     & .__lcs_panel_selector__ {
-      flex: 1;
       min-width: 0;
       margin: 0;
-      color: var(--lcs-row);
+      color: var(--lcs-match);
       background: transparent;
       font: 600 1em / 1.35 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       overflow-wrap: anywhere;
       word-break: break-word;
+      padding-top: 6px;
       align-self: end;
     }
 
@@ -350,7 +351,6 @@ html[data-lcs-active] {
       display: grid;
       gap: 6px;
       align-content: start;
-      flex: 1 0 auto;
 
       & li {
         margin: 0px 2px;
