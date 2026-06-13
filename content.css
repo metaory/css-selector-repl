@@ -243,16 +243,46 @@ html[data-lcs-active] {
     pointer-events: auto;
     width: var(--lcs-panel-width);
     box-sizing: border-box;
-    display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 4px;
     padding: 4px 6px;
     color: var(--lcs-fg);
     font: 600 var(--lcs-panel-font) / 1.25;
     background: transparent;
-    backdrop-filter: blur(16px);
     box-shadow: 0 4px 18px var(--lcs-shadow);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lcs-surface) transparent;
+
+    &::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--lcs-border);
+      border-radius: 999px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      backdrop-filter: blur(16px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    & > * {
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
 
     & .__lcs_panel_meta_empty__ {
       padding: 8px;
@@ -263,14 +293,21 @@ html[data-lcs-active] {
       text-align: center;
     }
 
+    & .__lcs_panel_meta_head__,
+    & .__lcs_panel_meta_empty__ {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-radius: 8px;
+      background: var(--lcs-overlay);
+      backdrop-filter: blur(12px);
+    }
+
     & .__lcs_panel_meta_head__ {
       display: flex;
       align-items: center;
       gap: 6px;
       padding: 5px 6px;
-      border-radius: 8px;
-      background: transparent;
-      backdrop-filter: blur(12px);
       overflow-wrap: anywhere;
     }
 
@@ -312,24 +349,8 @@ html[data-lcs-active] {
       list-style: none;
       display: grid;
       gap: 6px;
-      overflow: auto;
-      min-height: 0;
       align-content: start;
-      scrollbar-width: thin;
-      scrollbar-color: var(--lcs-surface) transparent;
-
-      &::-webkit-scrollbar {
-        width: 5px;
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: var(--lcs-border);
-        border-radius: 999px;
-      }
-
-      &::-webkit-scrollbar-track {
-        background: transparent;
-      }
+      flex: 1 0 auto;
 
       & li {
         margin: 0px 2px;
