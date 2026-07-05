@@ -1,7 +1,7 @@
 <div align="center">
   <img src="icons/icon128.png" width="96" height="96" alt="Live CSS Queries icon">
   <h1>Live CSS Queries</h1>
-  <img src="assets/promo-tile-small.png" alt="promo">
+  <img src="assets/promo-small.png" alt="promo">
   <p><strong>Live CSS selector results with on-page highlights</strong></p>
   <p>Type in the bottom input bar; inspect hits in the right-side match panel</p>
 </div>
