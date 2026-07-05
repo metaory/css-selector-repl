@@ -30,9 +30,9 @@ You iterate selectors on the live DOM.
 
 
 <div align="center">
-  <a href="https://chromewebstore.google.com/detail/live-css-queries/placeholder"><s>Install from the Chrome Web Store</s>&nbsp; <b>under review</b> &nbsp;</a>
+  <a href="https://chromewebstore.google.com/detail/live-css-queries/lcebikobkkjlfnlkcdlhhiokgodmphml">Install from the Chrome Web Store</a>
   <br>
-  <a href="https://chromewebstore.google.com/detail/live-css-queries/placeholder">
+  <a href="https://chromewebstore.google.com/detail/live-css-queries/lcebikobkkjlfnlkcdlhhiokgodmphml">
     <img src="assets/chromewebstore.png" width="280" alt="Available in the Chrome Web Store">
   </a>
 </div>
